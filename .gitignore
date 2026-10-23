@@ -1,0 +1,170 @@
+
+# ==========================================
+# AGENT-REACT-RAG - .gitignore
+# ==========================================
+
+# Secretos y variables de entorno
+.env
+.env.*
+!.env.example
+!.env.template
+!.env.sample
+!.env.*.example
+!.env.*.sample
+
+# Entornos virtuales
+env/
+ENV/
+.venv/
+venv/
+
+# Secretos, credenciales y certificados
+secrets/
+credentials/
+*_credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+build/
+dist/
+site/
+.eggs/
+*.egg-info/
+pip-wheel-metadata/
+.tox/
+.nox/
+
+# Pruebas, caché y análisis estático
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.dmypy.json
+dmypy.json
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+htmlcov/
+test-results/
+playwright-report/
+junit.xml
+
+# Bases de datos y datos locales
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+app/data/*
+!app/data/.gitkeep
+
+# Logs y archivos temporales
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# Node.js y frontend
+node_modules/
+.npm/
+.parcel-cache/
+.vite/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# IDE y editores
+.vscode/
+.idea/
+*.code-workspace
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Configuración local y variables de herramientas
+.envrc
+.python_history
+
+# Mantener versionados los archivos de proyecto:
+# requirements.txt
+# pyproject.toml
+# uv.lock
+# .python-version
+# README.md
+# ==============================
+# Bases de datos y datos locales
+# ==============================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+app/data/
+data/local/
+instance/
+
+# ==============================
+# Logs, temporales y secretos accidentales
+# ==============================
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.orig
+*.rej
+secrets/
+secrets.json
+credentials.json
+service-account*.json
+
+# ==============================
+# Frontend / Node
+# ==============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+dist/
+coverage/
+.vite/
+
+# ==============================
+# IDE y sistema operativo
+# ==============================
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==============================
+# Pruebas y artefactos generados
+# ==============================
+test-results/
+playwright-report/
+.nyc_output/
+*.prof
+.prof/
+
+# ==============================
+# Herramientas locales
+# ==============================
+.envrc
+.python-version.local

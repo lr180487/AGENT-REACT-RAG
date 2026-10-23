@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agente asistente base de conocimiento — Modo Claro • Loader Logotipo</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="favicon.png">
+<style>
+  :root{
+    --bg:#fafaf9; --panel:#ffffff; --panel-2:#f9fafb; --border:#e5e7eb; --border-strong:#d1d5db; --muted:#6b7280; --text:#111827;
+    --primary:#18181b; --primary-2:#27272a; --primary-soft:#f4f4f5; --accent:#52525b; --accent-2:#71717a;
+    --success:#111827; --success-soft:#f4f4f5; --warning:#71717a; --warning-soft:#fafafa; --danger:#18181b; --danger-soft:#f4f4f5;
+    --radius:10px; --radius-sm:8px; --shadow:0 1px 3px rgba(0,0,0,.06); --shadow-lg:0 4px 12px rgba(0,0,0,.08);
+    --gradient-primary:#18181b; --gradient-panel:#ffffff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+  /* Header claro */
+  .header{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.95);backdrop-filter:blur(6px);position:sticky;top:0;z-index:20}
+  .brand{display:flex;align-items:center;gap:12px}
+  /* Logo + Spinner loader — 5 segundos al cargar */
+  .logo-wrap{position:relative;width:44px;height:44px;display:grid;place-items:center;flex-shrink:0}
+  .logo{width:36px;height:36px;border-radius:11px;background:white;border:1px solid var(--border);display:grid;place-items:center;overflow:hidden;padding:2px;box-shadow:0 4px 12px rgba(15,23,42,.08);position:relative;z-index:2;font-size:18px}
+  .logo-spinner{position:absolute;inset:0;width:44px;height:44px;border-radius:12px;border:2px solid #e5e7eb;border-top-color:var(--primary);z-index:1;opacity:0;visibility:hidden;transition:opacity .2s}
+  
+  .logo-wrap.loading .logo-spinner, .logo-wrap.initial-loading .logo-spinner{opacity:1;visibility:visible;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* Estado loading más rápido al probar / enviar */
+  .logo-wrap.loading .logo-spinner{animation-duration:.7s}
+
+  .brand h1{font-size:15px;font-weight:800;letter-spacing:.2px;color:var(--text)}
+  .brand p{font-size:11px;color:var(--muted);margin-top:1px;font-weight:600}
+  .header-actions{display:flex;align-items:center;gap:10px}
+  .status-pill{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--border);font-size:12px;font-weight:700;box-shadow:0 1px 2px rgba(15,23,42,.06)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 0 6px rgba(16,185,129,.14);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+  .btn{appearance:none;border:none;cursor:pointer;font-weight:700;font-size:13px;padding:10px 16px;border-radius:999px;transition:.15s;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+  .btn-primary{background:var(--primary);color:white;box-shadow:none;border:1px solid var(--primary)}
+  .btn-primary:hover{background:var(--primary-2)}
+  .btn-ghost{background:var(--panel);border:1px solid var(--border);color:var(--text);box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .btn-ghost:hover{background:var(--panel-2);border-color:var(--border-strong)}
+  .btn-sm{padding:7px 12px;font-size:12px}
+  /* Layout */
+  .layout{display:grid;grid-template-columns:260px 1fr;flex:1;min-height:calc(100vh - 64px);overflow:visible;min-height:0}
+  .sidebar{background:var(--panel);border-right:1px solid var(--border);padding:16px;display:flex;flex-direction:column;gap:14px;overflow:visible}
+  .side-title{font-size:11px;letter-spacing:.12em;color:var(--muted);font-weight:800;padding:8px 10px 4px}
+  .nav{display:flex;flex-direction:column;gap:6px}
+  .nav-btn{width:100%;text-align:left;padding:12px 12px;border-radius:12px;border:1px solid transparent;background:transparent;color:var(--muted);font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:.15s}
+  .nav-btn:hover{background:var(--panel-2);color:var(--text)}
+  .nav-btn.active{background:linear-gradient(135deg,rgba(124,92,255,.10),rgba(46,197,255,.08));border-color:rgba(124,92,255,.22);color:var(--text);box-shadow:0 4px 12px rgba(124,92,255,.08)}
+  .nav-btn .icon{width:28px;height:28px;border-radius:8px;background:var(--panel-2);border:1px solid var(--border);display:grid;place-items:center;font-size:15px}
+  .nav-btn.active .icon{background:var(--primary);color:white;border-color:transparent}
+  .badge{margin-left:auto;background:var(--primary);color:white;font-size:10px;padding:3px 7px;border-radius:999px;font-weight:900;letter-spacing:.3px}
+  .badge-new{background:var(--warning);color:white}
+  .side-footer{margin-top:auto;padding:12px;border-radius:12px;background:#f8f9ff;border:1px solid #e6e8ff}
+  .side-footer h4{font-size:12px;margin-bottom:6px;color:var(--text)}
+  .side-footer p{font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:10px}
+  /* Main claro */
+  .main{padding:22px 22px 30px;overflow:visible;display:flex;flex-direction:column;min-height:0;background:
+    radial-gradient(700px 320px at 15% 0%, rgba(124,92,255,.08), transparent 60%),
+    radial-gradient(700px 320px at 88% 0%, rgba(46,197,255,.07), transparent 60%),
+    var(--bg)}
+  .top-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+  .mini-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+  .mini-card h3{font-size:11px;letter-spacing:.08em;color:var(--muted)}
+  .mini-card strong{font-size:18px;color:var(--text)}
+  .mini-card span{font-size:11px;color:var(--muted)}
+  .mini-card .bar{height:6px;border-radius:999px;background:#eef2f7;overflow:hidden}
+  .mini-card .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--primary),#2ec5ff);border-radius:999px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:none;overflow:hidden}
+  .panel-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;background:#ffffff}
+  .panel-head h2{font-size:14px;font-weight:800;display:flex;align-items:center;gap:10px;color:var(--text)}
+  .panel-head p{font-size:12px;color:var(--muted);margin-top:2px}
+  .panel-body{padding:18px}
+  .grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin-top:18px}
+  @media(max-width:768px){.header{padding:0 12px} .brand p{display:none}}
+  @media(max-width:1100px){.layout{grid-template-columns:1fr}.sidebar{flex-direction:row;overflow:auto}.nav{flex-direction:row}.side-footer{display:none}.top-cards{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
+  @media(max-width:640px){.top-cards{grid-template-columns:1fr}}
+  /* Views */
+  .view{display:none;overflow:visible;padding-right:0}
+  /* scroll eliminado — vista sin scroll independiente */
+  .view.active{display:block;animation:fade .2s ease;overflow:visible}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  /* Forms */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form-grid.full{grid-template-columns:1fr}
+  .field{display:flex;flex-direction:column;gap:7px}
+  .field label{font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--muted);text-transform:uppercase}
+  .input, .select{width:100%;padding:12px 13px;border-radius:10px;background:#f8fafc;border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;outline:none;transition:.15s}
+  .input:focus,.select:focus{border-color:rgba(124,92,255,.45);box-shadow:0 0 0 4px rgba(124,92,255,.12);background:#fff}
+  .input::placeholder{color:#94a3b8}
+  .hint{font-size:11px;color:var(--muted);line-height:1.4}
+  .input-wrap{position:relative}
+  .eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--panel);border:1px solid var(--border);width:32px;height:32px;border-radius:8px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+  .eye:hover{background:var(--panel-2)}
+  .providers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  @media(max-width:700px){.providers{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}}
+  .prov{padding:12px;border-radius:12px;background:#f8fafc;border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:10px;transition:.15s}
+  .prov:hover{border-color:rgba(124,92,255,.35);background:white;box-shadow:0 4px 14px rgba(15,23,42,.06)}
+  .prov.active{border-color:var(--primary);background:linear-gradient(135deg,rgba(124,92,255,.08),rgba(46,197,255,.06));box-shadow:0 0 0 4px rgba(124,92,255,.10)}
+  .prov-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-weight:900;font-size:13px;color:white;flex-shrink:0}
+  .prov h4{font-size:13px;font-weight:800;color:var(--text)}
+  .prov p{font-size:11px;color:var(--muted)}
+  /* LLM Cards */
+  .llm-list{display:flex;flex-direction:column;gap:12px}
+  .llm-card{display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;background:#f8fafc;border:1px solid var(--border)}
+  .llm-card.active-card{border-color:rgba(16,185,129,.28);background:linear-gradient(135deg,rgba(16,185,129,.06),rgba(46,197,255,.05))}
+  .llm-meta{flex:1;min-width:0}
+  .llm-meta h4{font-size:13px;display:flex;align-items:center;gap:8px;color:var(--text)}
+  .llm-meta p{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tag{font-size:10px;font-weight:900;letter-spacing:.05em;padding:4px 7px;border-radius:999px;border:1px solid var(--border);background:var(--panel);color:var(--muted)}
+  .tag.on{color:var(--success);border-color:rgba(16,185,129,.25);background:rgba(16,185,129,.08)}
+  .tag.off{color:var(--muted)}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .icon-btn{width:34px;height:34px;border-radius:9px;background:var(--panel);border:1px solid var(--border);display:grid;place-items:center;cursor:pointer;color:var(--muted);transition:.15s}
+  .icon-btn:hover{color:var(--text);background:var(--panel-2)}
+  .icon-btn.danger:hover{color:white;background:var(--danger);border-color:var(--danger)}
+  /* Upload */
+  .drop{border:1.5px dashed var(--border);border-radius:14px;padding:22px;display:grid;place-items:center;text-align:center;background:#f8fafc;transition:.15s}
+  .drop.drag{background:rgba(124,92,255,.05);border-color:var(--primary)}
+  /* Chat */
+  .chat-box{height:400px;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:14px;padding:16px;background:#ffffff;border:1px solid var(--border);border-radius:18px;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#94a3b8 #eef2f7;position:relative;box-shadow:0 4px 18px rgba(15,23,42,.06);
+    background-image:
+      linear-gradient(white, rgba(255,255,255,0)),
+      linear-gradient(rgba(255,255,255,0), white),
+      radial-gradient(farthest-side at 50% 0, rgba(15,23,42,.08), transparent),
+      radial-gradient(farthest-side at 50% 100%, rgba(15,23,42,.08), transparent);
+    background-size: 100% 16px, 100% 16px, 100% 10px, 100% 10px;
+    background-position: center top, center bottom, center top, center bottom;
+    background-repeat: no-repeat;
+    background-attachment: local, local, scroll, scroll;
+    background:
+      linear-gradient(#f8fafc, rgba(248,250,252,0)) center top / 100% 16px no-repeat,
+      linear-gradient(rgba(248,250,252,0), #f8fafc) center bottom / 100% 16px no-repeat,
+      radial-gradient(farthest-side at 50% 0, rgba(15,23,42,.06), transparent) center top / 100% 10px no-repeat,
+      radial-gradient(farthest-side at 50% 100%, rgba(15,23,42,.06), transparent) center bottom / 100% 10px no-repeat;
+    background-attachment: local, local, scroll, scroll;
+  }
+  .chat-box::-webkit-scrollbar{width:12px;height:12px}
+  .chat-box::-webkit-scrollbar-track{background:#eef2f7;border-radius:999px;margin:3px 2px;border:1px solid #e2e8f0}
+  .chat-box::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:999px;border:3px solid #eef2f7;background-clip:content-box;min-height:60px}
+  .chat-box::-webkit-scrollbar-thumb:hover{background:#7c5cff}
+  .chat-box::-webkit-scrollbar-thumb:active{background:var(--primary)}
+  .chat-wrap{position:relative}
+  .scroll-bottom-mini{position:absolute;bottom:14px;right:14px;width:34px;height:34px;border-radius:50%;background:white;border:1px solid var(--border);box-shadow:0 8px 20px rgba(15,23,42,.12);display:grid;place-items:center;cursor:pointer;color:var(--primary);font-size:13px;opacity:0;transform:translateY(6px) scale(.96);pointer-events:none;transition:.2s;z-index:4}
+  .scroll-bottom-mini.show{opacity:1;transform:none;pointer-events:auto}
+  .scroll-bottom-mini:hover{background:var(--primary);color:white;border-color:var(--primary)}
+  .msg{max-width:78%;}
+  .msg .bubble-text{max-height:none;overflow:visible;padding-right:0}
+  /* bubble-text scroll eliminado */
+  #alarmMenu{display:none !important} #alarmMenu.show{display:none !important}
+  .msg{max-width:78%;padding:12px 14px;border-radius:14px;font-size:13px;line-height:1.5}
+  .msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:white;border-bottom-right-radius:4px;box-shadow:0 6px 14px rgba(124,92,255,.22)}
+  .msg.bot{align-self:flex-start;background:var(--panel);border:1px solid var(--border);border-bottom-left-radius:4px;box-shadow:0 2px 8px rgba(15,23,42,.05);max-height:none;overflow:visible}
+  .msg small{opacity:.7;font-size:11px}
+  /* Typing dots */
+  .typing{display:inline-flex;gap:4px;align-items:center;padding:10px 12px;background:white;border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:4px;box-shadow:0 2px 8px rgba(15,23,42,.05)}
+  .typing i{width:6px;height:6px;border-radius:50%;background:var(--primary);animation:bounce 1.1s infinite}
+  .typing i:nth-child(2){animation-delay:.15s;background:#2ec5ff}
+  .typing i:nth-child(3){animation-delay:.30s;background:var(--primary-2)}
+  @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.45}40%{transform:translateY(-4px);opacity:1}}
+  /* Diagram */
+  .arch{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:11px;font-weight:800}
+  .arch span{padding:8px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--border);box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .arch i{color:var(--primary)}
+  /* Toast */
+  .toast{position:fixed;bottom:18px;right:18px;background:white;border:1px solid var(--border);padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-lg);transform:translateY(80px);opacity:0;transition:.25s;z-index:50}
+  .toast.show{transform:none;opacity:1}
+
+  /* Page Loader — overlay elegante */
+  .page-loader{position:fixed;inset:0;background:rgba(255,255,255,.9);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:9999;transition:opacity .3s ease, visibility .3s;animation:autoHideLoader 0s 1.8s forwards}
+  .page-loader.hidden{opacity:0;visibility:hidden;pointer-events:none;animation:none}
+  @keyframes autoHideLoader{to{opacity:0;visibility:hidden;pointer-events:none}}
+  .loader-card{display:flex;flex-direction:column;align-items:center;gap:16px;padding:28px 32px;background:white;border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow-lg)}
+  .loader-spinner{width:32px;height:32px;border:2px solid #e5e7eb;border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite}
+  .loader-text{font-size:13px;font-weight:800;color:var(--muted);letter-spacing:.04em}
+  .loader-sub{font-size:11px;color:#94a3b8}
+
+  /* Mejoras de diseño — más limpio y moderno */
+  .panel{border-radius:18px}
+  .panel-head{background:linear-gradient(180deg,#ffffff,#fbfcff)}
+  .mini-card{border-radius:18px;transition:transform .15s, box-shadow .15s}
+  .mini-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(15,23,42,.08)}
+  .nav-btn{border-radius:14px}
+  .btn{border-radius:14px}
+  .input, .select{border-radius:12px}
+  .drop{border-radius:18px;background:#fbfdff}
+  .providers{gap:12px}
+  .prov{border-radius:14px}
+  /* Ocultar info tecnica residual: cualquier code con POST /api */
+
+  /* === DESCARGA MENSAJES (reemplaza caja) === */
+  .messages-full-box{margin-top:14px;background:white;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+  .messages-full-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#ffffff,#fbfcff)}
+  .messages-full-head h3{font-size:13px;font-weight:900;display:flex;align-items:center;gap:8px}
+  .messages-full-head span{font-size:11px;color:var(--muted);font-weight:700}
+  .messages-full-list{padding:14px;display:flex;flex-direction:column;gap:10px;overflow:visible}
+  .full-msg{padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:#f8fafc;font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap;word-break:break-word;overflow:visible}
+  .full-msg.user{background:linear-gradient(135deg,rgba(124,92,255,.08),rgba(46,197,255,.06));border-color:rgba(124,92,255,.18)}
+  .full-msg.bot{background:white;border-color:var(--border)}
+  .full-msg small{display:block;margin-top:6px;font-size:11px;color:var(--muted)}
+  .full-msg b{color:var(--text)}
+
+  /* === NUEVO: Documentos — grupos y tarjetas === */
+  .doc-group{margin-top:16px}
+  .doc-group-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .doc-group-head h3{font-size:13px;font-weight:900;display:flex;align-items:center;gap:8px;color:var(--text)}
+  .doc-group-head span{font-size:11px;color:var(--muted);font-weight:700}
+  .doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow:visible}
+  @media(max-width:900px){.doc-grid{grid-template-columns:1fr}}
+  .doc-card{background:white;border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 10px rgba(15,23,42,.04);overflow:visible;transition:.15s}
+  .doc-card:hover{border-color:rgba(124,92,255,.25);box-shadow:0 6px 18px rgba(15,23,42,.07)}
+  .doc-icon{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;color:white;font-size:18px;flex-shrink:0}
+  .doc-meta{flex:1;min-width:0;overflow:visible}
+  .doc-meta h4{font-size:12.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .doc-meta p{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .doc-actions{display:flex;gap:6px;flex-shrink:0}
+  .doc-actions .btn{padding:7px 10px;font-size:12px}
+
+  /* === Modal vista previa === */
+  .doc-preview-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100;padding:18px}
+  .doc-preview-overlay.show{display:flex}
+  .doc-preview-card{width:min(920px,96vw);max-height:90vh;background:white;border-radius:18px;border:1px solid var(--border);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden}
+  .doc-preview-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(180deg,#ffffff,#fbfcff)}
+  .doc-preview-head h3{font-size:13px;font-weight:900}
+  .doc-preview-body{padding:16px;overflow:auto}
+  .doc-preview-iframe{width:100%;height:62vh;border:1px solid var(--border);border-radius:12px;background:#f8fafc}
+  .doc-preview-text{white-space:pre-wrap;font-size:13px;line-height:1.6;color:var(--text);background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:14px}
+
+  /* === COLORES v3 — 2026-10-19: paleta más cálida, vibrante y accesible === */
+  body{background:var(--bg)}
+  .header{background:rgba(255,255,255,.96);border-bottom:1px solid #e8ecf3;box-shadow:0 1px 3px rgba(15,23,42,.04), 0 4px 20px rgba(124,92,255,.04)}
+  .brand h1{letter-spacing:-.2px}
+  .btn-primary{background:var(--gradient-primary);box-shadow:0 8px 22px rgba(124,92,255,.28);border:1px solid rgba(255,255,255,.2)}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(124,92,255,.32);filter:brightness(1.04)}
+  .btn-ghost{background:white;border-color:var(--border);box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  .btn-ghost:hover{background:var(--primary-soft);border-color:rgba(124,92,255,.22);color:var(--primary-2)}
+  .sidebar{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);border-right:1px solid #e8ecf3}
+  .nav-btn.active{background:linear-gradient(135deg,rgba(124,92,255,.09),rgba(6,182,214,.07));border-color:rgba(124,92,255,.20);box-shadow:0 4px 16px rgba(124,92,255,.09)}
+  .nav-btn:hover{background:var(--primary-soft);color:var(--primary-2)}
+  .nav-btn .icon{background:var(--panel-2);border-color:var(--border)}
+  .nav-btn.active .icon{background:var(--gradient-primary);color:white;border-color:transparent;box-shadow:0 4px 12px rgba(124,92,255,.25)}
+  .side-footer{background:linear-gradient(135deg,#f8f9ff 0%,#f5f3ff 50%,#ecfeff 100%) !important;border-color:#e0e7ff !important}
+  .panel{background:white;border-color:var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .panel-head{background:var(--gradient-panel);border-bottom:1px solid #f1f5f9}
+  .mini-card{border-radius:var(--radius);background:white;border-color:var(--border)}
+  .mini-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:rgba(124,92,255,.15)}
+  .mini-card .bar{background:#eef2ff}
+  .mini-card .bar i{background:var(--gradient-primary)}
+  .tag{background:white;border-color:var(--border);color:var(--muted)}
+  .tag.on{background:var(--success-soft);color:var(--success);border-color:rgba(5,150,105,.18)}
+  .prov:hover{border-color:rgba(124,92,255,.28);box-shadow:0 6px 20px rgba(124,92,255,.08)}
+  .prov.active{background:linear-gradient(135deg,rgba(124,92,255,.09),rgba(6,182,214,.06));border-color:var(--primary);box-shadow:0 0 0 4px rgba(124,92,255,.10)}
+  .chat-box{background:white;border-color:var(--border);box-shadow:0 4px 24px rgba(15,23,42,.06)}
+  .msg.user{background:var(--gradient-primary);box-shadow:0 6px 18px rgba(124,92,255,.24)}
+  .msg.bot{background:white;border-color:var(--border);box-shadow:0 2px 10px rgba(15,23,42,.05)}
+  .drop{border-color:#cbd5e1;background:#fbfdff}
+  .drop.drag{background:var(--primary-soft);border-color:var(--primary)}
+  .doc-card:hover{border-color:rgba(124,92,255,.22);box-shadow:0 8px 24px rgba(124,92,255,.08)}
+  .status-pill{background:white;border-color:var(--border);box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  .llm-card.active-card{background:linear-gradient(135deg,rgba(5,150,105,.06),rgba(6,182,214,.04));border-color:rgba(5,150,105,.22)}
+  /* Scrollbar refinado v3 */
+  .chat-box::-webkit-scrollbar-thumb{background:#a5b4fc;border-color:#eef2ff}
+  .chat-box::-webkit-scrollbar-thumb:hover{background:var(--primary)}
+  .chat-box::-webkit-scrollbar-track{background:#eef2ff;border-color:#e0e7ff}
+  /* Bubble refinado v3 — nuevo-chat */
+  .bubble.user{background:var(--gradient-primary) !important;box-shadow:0 8px 20px rgba(124,92,255,.24) !important}
+  .bubble.bot{background:white !important;border-color:var(--border) !important}
+  .chat-item{background:white;border-color:transparent}
+  .chat-item:hover{border-color:var(--border);box-shadow:0 3px 12px rgba(15,23,42,.06)}
+  .chat-item.active{background:linear-gradient(135deg,rgba(124,92,255,.08),rgba(6,182,214,.06)) !important;border-color:rgba(124,92,255,.18) !important}
+  .composer-inner{background:white;border-color:var(--border);box-shadow:var(--shadow)}
+  .composer-inner:focus-within{border-color:rgba(124,92,255,.32);box-shadow:0 0 0 4px rgba(124,92,255,.11)}
+  .send{background:var(--gradient-primary);box-shadow:0 6px 16px rgba(124,92,255,.26)}
+  /* Main fondos degradados v3 */
+  .main{background:radial-gradient(800px 380px at 15% 0%, rgba(124,92,255,.06), transparent 60%), radial-gradient(800px 380px at 88% 0%, rgba(6,182,214,.05), transparent 60%), var(--bg) !important}
+  .chat-main{background:radial-gradient(700px 320px at 50% 0%, rgba(124,92,255,.05), transparent 65%), var(--bg) !important}
+
+  .sidebar{transition:transform .3s ease}
+  .sidebar.mobile-open{transform:translateX(0)}
+  @media(max-width:1100px){
+    .sidebar{position:fixed;top:56px;left:0;bottom:0;width:280px;z-index:30;transform:translateX(-100%);box-shadow:0 4px 12px rgba(0,0,0,.08);overflow-y:auto;flex-direction:column}
+    .sidebar.mobile-open{transform:translateX(0)}
+    #mobileMenuBtn{display:inline-flex !important}
+    .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:29}
+    .sidebar-overlay.show{display:block}
+  }
+
+/* === HAMBURGERA EN FILA — TODAS LAS OPCIONES EN FILA HORIZONTAL MÓVIL === */
+@media(max-width:1100px){
+  .sidebar{
+    top:56px !important;
+    left:0 !important; right:0 !important; bottom:auto !important;
+    width:100% !important;
+    height:auto !important; max-height:68vh !important;
+    transform:translateY(-120%) !important;
+    border-right:none !important; border-bottom:1px solid var(--border) !important;
+    padding:12px 12px 10px !important;
+    flex-direction:column !important;
+    overflow-x:hidden !important; overflow-y:auto !important;
+    box-shadow:0 10px 30px rgba(15,23,42,.12) !important;
+    border-radius:0 0 16px 16px !important;
+  }
+  .sidebar.mobile-open{transform:translateY(0) !important;}
+  .sidebar .side-title{display:none !important;}
+  .sidebar .side-footer{display:none !important;}
+  .sidebar .nav{
+    flex-direction:row !important;
+    flex-wrap:nowrap !important;
+    gap:8px !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    -webkit-overflow-scrolling:touch !important;
+    scrollbar-width:none !important;
+    padding-bottom:6px !important;
+    align-items:center !important;
+  }
+  .sidebar .nav::-webkit-scrollbar{display:none !important;}
+  .sidebar .nav-btn{
+    width:auto !important; flex:0 0 auto !important;
+    white-space:nowrap !important;
+    padding:10px 14px !important;
+    font-size:13px !important;
+  }
+  .sidebar.mobile-open .nav-btn{animation:fadeInRow .28s ease both;}
+  .sidebar.mobile-open .nav-btn:nth-child(1){animation-delay:.02s}
+  .sidebar.mobile-open .nav-btn:nth-child(2){animation-delay:.04s}
+  .sidebar.mobile-open .nav-btn:nth-child(3){animation-delay:.06s}
+  .sidebar.mobile-open .nav-btn:nth-child(4){animation-delay:.08s}
+  .sidebar.mobile-open .nav-btn:nth-child(5){animation-delay:.10s}
+  .sidebar.mobile-open .nav-btn:nth-child(6){animation-delay:.12s}
+  .sidebar.mobile-open .nav-btn:nth-child(7){animation-delay:.14s}
+  .sidebar.mobile-open .nav-btn:nth-child(8){animation-delay:.16s}
+  .sidebar.mobile-open .nav-btn:nth-child(9){animation-delay:.18s}
+  .sidebar.mobile-open .nav-btn:nth-child(10){animation-delay:.20s}
+  .sidebar.mobile-open .nav-btn:nth-child(11){animation-delay:.22s}
+  @keyframes fadeInRow{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  #mobileMenuBtn{display:inline-flex !important;}
+  .sidebar-overlay{top:56px !important; background:rgba(15,23,42,.18) !important; backdrop-filter:blur(2px);}
+}
+@media(max-width:640px){
+  .sidebar .nav{gap:6px !important;}
+  .sidebar .nav-btn{padding:8px 12px !important; font-size:12px !important;}
+  .sidebar .nav-btn .icon{width:22px !important;height:22px !important;font-size:12px !important;}
+}
+
+  .nav-btn .icon svg{width:15px;height:15px;display:block}
+  .nav-btn.active .icon svg{stroke:#fff}
+</style>
+  <noscript><meta http-equiv="refresh" content="2;url=interfaz.html"></noscript>
+<style id="docs-nav-responsive-css">
+/* === MENÚ HAMBURGUESA: UNA FILA RESPONSIVA (scroll-snap) === */
+@media (max-width:1100px){
+  .sidebar .nav{
+    display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important;
+    gap:8px !important; overflow-x:auto !important; overflow-y:hidden !important;
+    -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+    scroll-snap-type:x proximity; scroll-padding-inline:10px;
+    padding:2px 2px 8px !important; scrollbar-width:none;
+  }
+  .sidebar .nav::-webkit-scrollbar{display:none}
+  .sidebar .nav-btn{
+    flex:0 0 auto !important; width:auto !important; white-space:nowrap !important;
+    scroll-snap-align:start; min-height:42px; border-radius:999px !important;
+    border:1px solid var(--border,#e2e8f0) !important; background:#fff !important;
+    box-shadow:0 2px 8px rgba(15,23,42,.05); padding:9px 14px !important; font-size:13px !important;
+  }
+  .sidebar .nav-btn.active{
+    background:linear-gradient(135deg,rgba(124,92,255,.14),rgba(46,197,255,.10)) !important;
+    border-color:rgba(124,92,255,.35) !important; color:var(--text,#0f172a) !important;
+  }
+}
+@media (max-width:640px){
+  .sidebar .nav{gap:6px !important}
+  .sidebar .nav-btn{min-height:38px; padding:7px 11px !important; font-size:12px !important; gap:6px !important}
+  .sidebar .nav-btn .icon{width:20px !important; height:20px !important; font-size:11px !important}
+}
+/* === PESTAÑAS UNIFICADAS DE DOCUMENTOS === */
+.docs-tabs{display:flex; flex-wrap:nowrap; gap:6px; align-items:center; overflow-x:auto;
+  scrollbar-width:none; padding:8px; margin:0 0 12px; background:#fff;
+  border:1px solid var(--border,#e2e8f0); border-radius:14px;
+  box-shadow:0 2px 10px rgba(15,23,42,.04); -webkit-overflow-scrolling:touch}
+.docs-tabs::-webkit-scrollbar{display:none}
+.docs-tab{flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:8px 13px;
+  border-radius:999px; border:1px solid transparent; background:#f1f5f9; color:#64748b;
+  font-weight:800; font-size:12.5px; cursor:pointer; white-space:nowrap; transition:all .16s ease}
+.docs-tab:hover{background:#eef2f7; color:#0f172a}
+.docs-tab.active{background:linear-gradient(135deg,rgba(124,92,255,.14),rgba(46,197,255,.12));
+  border-color:rgba(124,92,255,.32); color:#0f172a; box-shadow:0 4px 12px rgba(124,92,255,.12)}
+
+/* === DOC-CARD FLEXIBLE EN MÓVIL === */
+@media (max-width:640px){
+  .doc-card{flex-wrap:wrap !important; align-items:flex-start !important; gap:8px !important; width:100% !important; max-width:100% !important}
+  .doc-card .doc-meta{flex:1 1 100% !important; min-width:0 !important; width:100% !important; overflow-wrap:anywhere; word-break:break-word}
+  .doc-card .doc-actions{width:100% !important; flex-wrap:wrap !important; justify-content:flex-start !important}
+  .doc-card .doc-actions .btn{flex:1 1 auto; min-width:0}
+}
+@media (max-width:640px){
+  /* header móvil: solo acciones esenciales, sin pills redundantes */
+  .header-actions .status-pill{display:none !important}
+}
+/* === CONTENCIÓN DEL GRID (evita que .main exceda el viewport) === */
+@media (max-width:1100px){
+  .layout{grid-template-columns:minmax(0,1fr) !important; width:100% !important; max-width:100%}
+  .main{min-width:0 !important; width:100% !important; max-width:100% !important}
+  .view{min-width:0 !important; max-width:100%}
+  .panel{min-width:0 !important; max-width:100%}
+  .top-cards{min-width:0}
+}
+/* el drawer arranca debajo del header real y queda 100% fuera de pantalla al cerrar */
+@media (max-width:1100px){
+  .sidebar{
+    top:var(--app-header-h,56px) !important;
+    transform:translateY(calc(-100% - var(--app-header-h,56px) - 8px)) !important;
+    visibility:hidden; pointer-events:none;
+    transition:transform .26s ease, visibility .26s ease;
+  }
+  .sidebar.mobile-open{
+    transform:translateY(0) !important;
+    visibility:visible; pointer-events:auto;
+  }
+  .sidebar-overlay{top:var(--app-header-h,56px) !important}
+}
+/* === HEADER COMPACTO EN TABLET/MÓVIL (evita overflow horizontal) === */
+@media (max-width:1100px){
+  html, body{max-width:100%; overflow-x:hidden}
+  .header{gap:8px; min-width:0}
+  #mobileMenuBtn{flex:0 0 auto}
+  .brand{min-width:0; flex:1 1 auto}
+  .brand h1{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px}
+  .brand p{display:none}
+  .header-actions{
+    display:flex !important; flex-wrap:nowrap !important; align-items:center; gap:6px;
+    min-width:0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  }
+  .header-actions::-webkit-scrollbar{display:none}
+  .header-actions > *{flex:0 0 auto}
+  .header-actions .btn{padding:6px 9px !important; font-size:12px !important; white-space:nowrap}
+  .header-actions .status-pill{padding:5px 9px !important; font-size:11px !important; white-space:nowrap}
+}
+@media (max-width:640px){
+  .header{flex-wrap:wrap !important; height:auto !important; min-height:56px !important; padding:6px 12px !important}
+  .header-actions{
+    width:100% !important; max-width:100% !important; margin-top:6px;
+    justify-content:flex-start !important; padding-bottom:2px;
+  }
+}
+</style>
+</head>
+<body>
+
+  <div id="pageLoader" class="page-loader" aria-hidden="true" data-redirect="">
+    <div class="loader-card">
+      <div style="position:relative;width:48px;height:48px;display:grid;place-items:center">
+        <div class="loader-spinner" style="position:absolute;inset:0;width:48px;height:48px"></div>
+        <div style="width:40px;height:40px;border-radius:12px;background:white;border:1px solid #e2e8f0;display:grid;place-items:center;overflow:hidden;padding:3px"><img src="/frontend/favicon.png" alt="Logo" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:contain"></div>
+      </div>
+      <div style="text-align:center">
+        <div class="loader-text">Cargando tu espacio</div>
+        <div class="loader-sub">Preparando todo para vos…</div>
+      </div>
+    </div>
+  </div>
+<script src="/frontend/llm-config.js"></script>
+<script>'use strict';
+
+/* LOADER — ocultado inmediato e independiente (no depende del bundle principal) */
+(function(){
+  let pl=document.getElementById('pageLoader');
+  if(!pl) return;
+  let redirectUrl=(pl.getAttribute('data-redirect')||'').trim() || new URLSearchParams(location.search).get('redirect') || new URLSearchParams(location.search).get('to') || '';
+  // permitir ?redirect=interfaz.html o ?to=nuevo-chat.html
+  function hide(){
+    if(pl.classList.contains('hidden')) return;
+    pl.classList.add('hidden');
+    setTimeout(function(){
+      try{ pl.style.display='none'; pl.remove(); }catch(e){ try{pl.style.display='none';}catch(e2){} }
+      if(redirectUrl){
+        try{
+          let target=redirectUrl;
+          if(!/^https?:\/\//.test(target)){
+            // resolver relativo al HTML actual
+            // si termina en .html, ir directo; si no, añadir .html
+            target=new URL(target, location.href).href;
+          }
+          if(target!==location.href) location.href=target;
+        }catch(e){}
+      }
+    }, 620);
+  }
+  // ocultar tras 1s mínimo, si el usuario hace clic lo oculta ya
+  setTimeout(hide, 1200);
+  setTimeout(hide, 3200); // seguridad
+  pl.addEventListener('click', hide);
+  // Escape también
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') hide(); });
+  // Si la página ya cargó y el loader sigue, forzar al window load
+  window.addEventListener('load', function(){ setTimeout(hide, 400); });
+})();
+</script>
+
+  <header class="header">
+    <button class="btn btn-ghost btn-sm" id="mobileMenuBtn" onclick="toggleMobileMenu()" style="display:none;margin-right:8px" title="Menú">☰</button>
+    <div class="brand">
+      <a href="/frontend/interfaz.html" class="logo-wrap" id="logoWrap" title="Ir a página principal — clic para inicio" style="text-decoration:none;cursor:pointer">
+        <div class="logo-spinner"></div>
+        <div class="logo" aria-hidden="true" style="background:white;border:1px solid var(--border);overflow:hidden;padding:2px;display:grid;place-items:center">
+            <img src="/frontend/favicon.png" alt="Logo asistente" onerror="this.style.display='none'; const fb=document.getElementById('logoFallback')||document.getElementById('logoFallbackDash'); if(fb) fb.style.display='grid';" style="width:100%;height:100%;object-fit:contain;display:block;border-radius:8px">
+          </div>
+      </a>
+      <div>
+        <h1>agente_react_rag</h1>
+        <p>Tus documentos, respuestas al instante</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" id="soundToggle" onclick="toggleSound()" title="Activar/desactivar sonidos">🔊</button>
+      <div class="status-pill" id="globalStatus"><span class="dot"></span> LLM: <b id="globalLLMText" style="margin-left:4px">No configurado</b></div>
+      <div class="status-pill" id="wsLangchainPill" title="Clic para reconectar" onclick="reconnectLangChainWS()" style="cursor:pointer"><span id="wsLangchainDot" style="width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 0 5px rgba(16,185,129,.18);display:inline-block"></span> <b id="wsLangchainText" style="margin-left:4px">Conectado</b></div>
+      <button class="btn btn-ghost btn-sm" onclick="switchView('llm')">🧠 Configurar LLM</button>
+    </div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
+  <div class="layout">
+        <aside class="sidebar" id="sidebar">
+      <div class="side-title">NAVEGACIÓN · 8 SECCIONES</div>
+      <nav class="nav">
+        <a href="/frontend/interfaz.html#view-chat" class="nav-btn active" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.9L3 21l1.9-4.7A8.4 8.4 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></span> Chat / Consulta</a>
+        <a href="/frontend/interfaz.html#view-documents" class="nav-btn" data-nav-group="docs" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Documentos</a>
+        <a href="/frontend/interfaz.html#view-llm" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1 0 8v1a4 4 0 0 1-8 0v-1a4 4 0 0 1 0-8V6a4 4 0 0 1 4-4z"/><path d="M12 8v8"/></svg></span> Asistente</a>
+        <a href="/frontend/interfaz.html#view-sounds" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="7" cy="17" r="2" fill="currentColor" stroke="none"/></svg></span> Configuración</a>
+        <a href="/frontend/documentacion.html" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span> Documentación</a>
+        <a href="/frontend/estado-db.html" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg></span> Mi espacio</a>
+        <a href="/frontend/ayuda.html" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4"/><path d="M12 17h.01"/></svg></span> Ayuda</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <!-- Top stats -->
+      <div class="top-cards">
+        <div class="mini-card"><h3>TUS DOCUMENTOS</h3><strong id="statDocs">0 docs</strong><span>Listos para consultar</span><div class="bar"><i style="width:68%"></i></div></div>
+        <div class="mini-card"><h3>CONOCIMIENTO</h3><strong id="statChunks">1,248</strong><span>Siempre disponible para vos</span><div class="bar"><i style="width:82%"></i></div></div>
+        <div class="mini-card"><h3>LLM ACTIVO</h3><strong id="statLLM">—</strong><span id="statLLMSub">Configura tu API Key</span><div class="bar"><i id="statLLMBar" style="width:12%;background:var(--muted)"></i></div></div>
+        <div class="mini-card"><h3>RESPUESTAS</h3><strong>~320 ms</strong><span>Rápidas y precisas</span><div class="bar"><i style="width:54%"></i></div></div>
+      </div>
+
+      <!-- VIEW: CHAT -->
+      <section id="view-chat" class="view active">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>💬 Chat / Consulta </h2>
+              <p>Conversá de forma natural. Tu asistente entiende el contexto.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="clearChat()">🗑️ Limpiar</button>
+          </div>
+          <div class="panel-body">
+            <div id="llmWarning" style="display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:12px;background:#fffbeb;border:1px solid #fcd34d;margin-bottom:14px">
+              <span style="font-size:18px">⚠️</span>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:800;color:#92400e">Asistente no conectado</div>
+                <div style="font-size:12px;color:#b45309">Conectá tu asistente para respuestas más completas y precisas.</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="switchView('llm')">Configurar ahora →</button>
+            </div>
+            
+                        <div class="chat-wrap" style="position:relative"><div class="chat-box" id="chatBox">
+              <div class="msg bot">¡Hola! Soy tu asistente. Puedo ayudarte con tus documentos y responder tus preguntas.<br><small>Conectá tu asistente para respuestas aún más inteligentes.</small></div>
+            </div>
+              <button id="scrollBottomMini" class="scroll-bottom-mini" onclick="scrollChatToBottom()" title="Ir abajo">↓</button>
+            </div>
+            <!-- Caja de mensajes completos (sin scroll, mensajes íntegros) -->
+            <div class="panel" id="downloadMessagesPanel" style="margin-top:14px">
+              <div class="panel-head" style="padding:12px 14px">
+                <div>
+                  <h2 style="font-size:13px">⬇️ Descargar mensajes</h2>
+                  <p style="font-size:11px;color:var(--muted)">Exporta el historial de este chat en el formato que prefieras</p>
+                </div>
+                <span class="tag" id="downloadCount">0 mensajes</span>
+              </div>
+              <div class="panel-body" style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="downloadMessages('json')">🧾 JSON</button>
+                <button class="btn btn-ghost btn-sm" onclick="downloadMessages('txt')">📃 TXT</button>
+                <button class="btn btn-ghost btn-sm" onclick="downloadMessages('md')">📝 MD</button>
+                <button class="btn btn-ghost btn-sm" onclick="downloadMessages('html')">🖨️ HTML/PDF</button>
+                <button class="btn btn-ghost btn-sm" onclick="copyMessages()">📋 Copiar</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:12px"><input id="chatInput" class="input" placeholder="Escribe tu consulta… ej: Resume el documento de contratos" onkeydown="if(event.key==='Enter')sendChat()">
+              <button class="btn btn-primary" onclick="sendChat()">Enviar ➤</button>
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none"><input type="checkbox" id="chatWebSearch" checked style="accent-color:var(--primary);width:14px;height:14px"> 🌐 Incluir búsqueda web — complementa con resultados actualizados</label>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="quickChat('¿Qué hay en mis documentos?')">¿Qué hay en mis documentos?</button>
+              <button class="btn btn-ghost btn-sm" onclick="quickChat('Busca cláusulas de penalidad')">Busca cláusulas</button>
+              <button class="btn btn-ghost btn-sm" onclick="quickChat('Haz un resumen ejecutivo')">Resumen ejecutivo</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: DOCUMENTS -->
+      <section id="view-documents" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>📄 Documentos</h2>
+              <p>Tus archivos, listos para conversar</p>
+            </div>
+            
+          </div>
+          <div class="panel-body">
+                        <div class="drop" id="dropZone">
+              <div style="font-size:28px;margin-bottom:8px">📤</div>
+              <div style="font-weight:800;font-size:13px;color:var(--text)">Arrastra tus archivos aquí</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">PDF, Word, Excel y más — los procesamos por vos</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:8px">
+                <span class="tag">PDF</span><span class="tag">DOCX</span><span class="tag">XLSX</span><span class="tag" style="background:#fef3c7;border-color:#fde68a">PPT</span><span class="tag" style="background:#ecfdf5;border-color:#a7f3d0">CSV</span><span class="tag">TXT</span><span class="tag" style="background:#f5f3ff;border-color:#ddd6fe">MD</span>
+              </div>
+              <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="document.getElementById('fileIn').click()">Seleccionar archivo</button>
+              <input id="fileIn" type="file" accept=".pdf,.docx,.doc,.xlsx,.xls,.ppt,.pptx,.csv,.txt,.md,.png,.jpg,.jpeg" multiple hidden onchange="handleFiles(this.files)">
+            </div>
+            <!-- Grupo: Documentos subidos -->
+            <div class="doc-group" id="groupUploaded">
+              <div class="doc-group-head">
+                <h3>📁 Documentos subidos <span class="tag" id="uploadedCount">0 archivos</span></h3>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-ghost btn-sm" onclick="clearUploaded()">🗑️ Vaciar</button>
+                  <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fileIn').click()">＋ Agregar</button>
+                </div>
+              </div>
+              <div id="docList" class="doc-grid"></div>
+              <div id="emptyUploaded" style="text-align:center;padding:18px;border:1px dashed var(--border);border-radius:12px;background:#f8fafc;margin-top:8px">
+                <div style="font-size:22px">📭</div>
+                <div style="font-weight:800;margin-top:4px;color:var(--text)">Aún no subiste archivos</div>
+                <div style="font-size:12px;color:var(--muted)">Arrastrá o seleccioná para ver <b>vista previa</b> y <b>descargar</b></div>
+              </div>
+              <div id="fileLoader" style="display:none;align-items:center;gap:10px;justify-content:center;padding:14px;margin-top:12px;border-radius:12px;background:#f8fafc;border:1px solid var(--border)">
+                <div style="width:18px;height:18px;border:2.5px solid #e8ecf3;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite"></div>
+                <span style="font-size:12px;font-weight:700;color:var(--muted)">Procesando archivo… MIME → Parser → Markdown</span>
+              </div>
+            </div>
+            <!-- Grupo: Documentos de prueba -->
+            <div class="doc-group" id="groupTest">
+              <div class="doc-group-head">
+                <h3>🧪 Documentos de prueba <span class="tag">4 ejemplos</span></h3>
+                <span style="font-size:11px;color:var(--muted)">Vista previa y descarga inmediata</span>
+              </div>
+              <div class="doc-grid" id="testDocsGrid"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: Base de Conocimiento — Búsqueda Semántica -->
+      <section id="view-rag" class="view">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>📚 Base de Conocimiento</h2>
+              <p>Búsqueda semántica en tus documentos — resultados al instante</p>
+            </div>
+            <span class="tag" id="ragStatsTag">Listo</span>
+          </div>
+          <div class="panel-body">
+            <div style="display:flex;gap:10px;align-items:center">
+              <div style="position:relative;flex:1">
+                <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)">🔍</span>
+                <input id="ragInput" class="input" placeholder="Ej: penalidades por incumplimiento, plazo de entrega, confidencialidad" style="padding-left:36px" onkeydown="if(event.key==='Enter') doRag()" oninput="if(!this.value.trim()){document.getElementById('ragResults').innerHTML=''; document.getElementById('ragStatsTag').textContent='Listo'}">
+              </div>
+              <button class="btn btn-primary" id="ragBtn" onclick="doRag()" style="white-space:nowrap">Buscar</button>
+              <button class="btn btn-ghost btn-sm" onclick="clearRag()" title="Limpiar búsqueda">✕</button>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
+              <span style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--muted)">EJEMPLOS:</span>
+              <button class="btn btn-ghost btn-sm" style="font-size:12px" onclick="document.getElementById('ragInput').value='penalidad por incumplimiento'; doRag()">Penalidad</button>
+              <button class="btn btn-ghost btn-sm" style="font-size:12px" onclick="document.getElementById('ragInput').value='plazo de entrega'; doRag()">Plazo</button>
+              <button class="btn btn-ghost btn-sm" style="font-size:12px" onclick="document.getElementById('ragInput').value='confidencialidad'; doRag()">Confidencialidad</button>
+              <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+                <label style="font-size:11px;color:var(--muted);font-weight:700">Top</label>
+                <select id="ragTopK" class="select" style="padding:6px 8px;min-width:60px"><option value="3">3</option><option value="5" selected>5</option><option value="8">8</option></select>
+              </span>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;background:linear-gradient(135deg,#eff6ff,#f5f3ff);border:1px solid #bfdbfe;border-radius:10px;cursor:pointer;font-size:12px;font-weight:700">
+              <input type="checkbox" id="ragWebSearch" style="accent-color:var(--primary)">
+              <span>🌐 Incluir búsqueda web</span>
+              <span style="font-weight:400;color:var(--muted)">— Tavily (API key si existe) → DuckDuckGo fallback (Python)</span>
+              <span style="margin-left:auto;font-size:10px;background:white;border:1px solid var(--border);padding:2px 6px;border-radius:999px">CLIENT API PYTHON</span>
+            </label>
+            <div id="webResults" style="margin-top:10px;display:none;flex-direction:column;gap:8px"></div>
+            <div id="ragResults" style="margin-top:14px;display:flex;flex-direction:column;gap:10px">
+              <div style="text-align:center;padding:20px;border:1px dashed var(--border);border-radius:12px;background:#f8fafc;color:var(--muted);font-size:13px">
+                <div style="font-size:22px">🔍</div>
+                <div style="font-weight:700;margin-top:6px;color:var(--text)">Busca en tus documentos</div>
+                <div style="margin-top:4px">Escribe un término y pulsa <b>Buscar</b> o <b>Enter</b>. Primero sube archivos en <b>Documentos</b> si aún no tienes.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: LLM CONFIG — NUEVO -->
+      <section id="view-llm" class="view">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <h2 style="font-size:18px;font-weight:900">🧠 Configuración API LLM</h2>
+          <span class="tag" style="background:#f5f3ff;color:#7c5cff;border-color:#ddd6fe">Listo</span>
+          
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="exportLLM()">⬇️ Exportar .env</button>
+            <button class="btn btn-primary btn-sm" onclick="document.getElementById('llmFormCard').scrollIntoView({behavior:'smooth'})">+ Agregar API</button>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <!-- List -->
+          <div class="panel">
+            <div class="panel-head">
+              <div><h2>🔑 APIs configuradas</h2><p>Elegí cuál usar. Tus claves quedan guardadas de forma segura.</p></div>
+              <span class="tag" id="llmCountTag">0 configuradas</span>
+            </div>
+            <div class="panel-body">
+              <div class="llm-list" id="llmList"></div>
+              <div id="emptyLLM" style="text-align:center;padding:26px;border:1px dashed var(--border);border-radius:12px;margin-top:10px;background:#f8fafc">
+                <div style="font-size:26px">🔐</div>
+                <div style="font-weight:800;margin-top:6px;color:var(--text)">Aún no hay APIs</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px">Agrega tu primera API LLM (OpenAI, Gemini, Anthropic, Groq, Ollama…)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Form -->
+          <div class="panel" id="llmFormCard">
+            <div class="panel-head">
+              <div><h2 id="formTitle">➕ Agregar nueva API LLM</h2><p id="formSub">Elige proveedor y pega tu API Key. Compatible OpenAI-API.</p></div>
+              
+            </div>
+            <div class="panel-body">
+              <div style="margin-bottom:12px">
+                <label style="font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">Proveedor</label>
+                <div class="providers" id="providerGrid">
+                  <!-- filled by JS -->
+                </div>
+              </div>
+
+              <div class="form-grid">
+                <div class="field">
+                  <label>Nombre personalizado</label>
+                  <input id="fName" class="input" placeholder="Ej: OpenAI Producción">
+                </div>
+                <div class="field">
+                  <label>Modelo por defecto</label>
+                  <select id="fModel" class="select"></select>
+                  <span class="hint" id="modelHint"></span>
+                </div>
+              </div>
+
+              <div class="form-grid full" style="margin-top:14px">
+                <div class="field">
+                  <label>API Key <span style="color:var(--danger)">*</span></label>
+                  <div class="input-wrap">
+                    <input id="fKey" class="input" type="password" placeholder="sk-••••••••••••••••••••">
+                    <button class="eye" onclick="toggleEye()" title="Mostrar/ocultar">👁️</button>
+                  </div>
+                  <span class="hint">Nunca se expone en el frontend. Se envía a <code>POST /api/v1/llm/config</code> y se guarda cifrada.</span>
+                </div>
+              </div>
+
+              <div class="form-grid" style="margin-top:14px;display:none">
+                <div class="field">
+                  <label>Base URL (opcional)</label>
+                  <input id="fBase" class="input" placeholder="https://api.openai.com/v1">
+                </div>
+                <div class="field">
+                  <label>Temperatura (0-2)</label>
+                  <input id="fTemp" class="input" type="number" step="0.1" min="0" max="2" value="0.7">
+                </div>
+              </div>
+
+              <div class="form-grid" style="margin-top:14px;display:none">
+                <div class="field">
+                  <label>Max tokens</label>
+                  <input id="fMax" class="input" type="number" value="2048">
+                </div>
+                <div class="field">
+                  <label>Timeout (ms)</label>
+                  <input id="fTimeout" class="input" type="number" value="30000">
+                </div>
+              </div>
+
+              <div style="display:flex;gap:10px;margin-top:18px">
+                <button class="btn btn-ghost" style="flex:1" onclick="testLLM()">🧪 Probar conexión</button>
+                <button class="btn btn-primary" style="flex:1" onclick="saveLLM()">💾 Guardar API</button>
+              </div>
+              <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:10px;display:none" id="cancelEdit" onclick="cancelEdit()">Cancelar edición</button>
+
+              <div id="testResult" style="margin-top:12px;display:none;padding:12px;border-radius:10px;font-size:12px;font-weight:700"></div>
+
+            </div>
+          </div>
+        </div>
+
+        </section>
+
+      <!-- VIEW: SONIDOS Y ALERTAS - CONFIGURACION COMPLETA -->
+      <section id="view-sounds" class="view">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <h2 style="font-size:18px;font-weight:900">🎚️ Configuración</h2>
+          <span class="tag" style="background:#fef3c7;color:#92400e;border-color:#fde68a">Web Audio · sin archivos</span>
+          <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="setSoundEnabled(true); playSound('success')">🔊 Activar</button>
+            <button class="btn btn-ghost btn-sm" onclick="setSoundEnabled(false)">🔇 Silenciar</button>
+            <button class="btn btn-primary btn-sm" onclick="stopAlarms(); playSound('test')">🧪 Probar sonido</button>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <!-- Master + Alertas -->
+          <div class="panel">
+            <div class="panel-head"><div><h2>🎛️ Controles generales</h2><p>Volumen maestro y estado</p></div><span class="tag" id="cfgSoundStatus" style="background:var(--success);color:white">● Activado</span></div>
+            <div class="panel-body" style="display:grid;gap:16px">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:800;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--panel-2)">
+                <input type="checkbox" id="cfgSoundEnabled" onchange="setSoundEnabled(this.checked)" style="width:18px;height:18px;accent-color:var(--primary)">
+                <span>Configuración activados</span>
+                <span style="margin-left:auto;font-size:12px;color:var(--muted)">Se guarda automáticamente</span>
+              </label>
+
+              <div>
+                <label style="font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">Volumen maestro — <span id="cfgVolLabel">85%</span></label>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+                  <span style="font-size:18px">🔈</span>
+                  <input type="range" id="cfgMasterVol" min="0" max="100" value="85" oninput="setVolume(this.value)" style="flex:1;accent-color:var(--primary);height:6px">
+                  <span style="font-size:18px">🔊</span>
+                  <button class="btn btn-primary btn-sm" onclick="playSound('info')" title="Probar">▶️</button>
+                </div>
+                <div style="font-size:11px;color:var(--muted);margin-top:6px">Afecta a todos los sonidos • 0% = silencio • Requiere interacción del usuario la primera vez</div>
+              </div>
+
+              <div style="height:1px;background:var(--border)"></div>
+
+              <div>
+                <label style="font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">Volumen de alertas — <span id="cfgAlertVolLabel">90%</span></label>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+                  <span>🔔</span>
+                  <input type="range" id="cfgAlertVol" min="0" max="100" value="90" oninput="setAlertVolume(this.value)" style="flex:1;accent-color:#f59e0b;height:6px">
+                  <button class="btn btn-ghost btn-sm" onclick="playAlarm(document.getElementById('cfgDefaultAlarm').value, 1)">▶️</button>
+                </div>
+              </div>
+
+              <div id="soundUnlockBanner" style="display:none;align-items:center;gap:10px;padding:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:12px">
+        <span style="font-size:20px">🔇</span>
+        <div style="flex:1"><b>Sonido bloqueado por el navegador</b><div style="font-size:12px;color:#92400e">Haz clic en <b>ACTIVAR Y PROBAR</b> o en cualquier parte para desbloquear el audio</div></div>
+        <button class="btn btn-primary btn-sm" onclick="unlockAudio(true); playSound('success')">🔊 Activar</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px">
+                <span style="font-size:20px">💡</span>
+                <div style="font-size:12px;line-height:1.4;color:#9a3412"><b>Consejo:</b> Si no escuchas nada, haz clic en cualquier parte de la página para desbloquear el audio (política de autoplay del navegador). En móvil activa también la vibración.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><div><h2>🎛️ Efectos — Reverb & Eco</h2><p>Volumen aumentado +40% • Reverb envolvente • Eco • Boost</p></div><span class="tag" id="fxStatusTag" style="background:#f5f3ff;color:#7c5cff;border:1px solid #ddd6fe">Reverb • Boost</span></div>
+            <div class="panel-body" style="display:grid;gap:14px">
+              <div id="soundUnlockBanner_dup" style="display:none;align-items:center;gap:10px;padding:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:12px">
+                <span style="font-size:20px">🔇</span>
+                <div style="flex:1"><b>Sonido bloqueado por el navegador</b><div style="font-size:12px;color:#92400e">Haz clic en <b>ACTIVAR Y PROBAR</b> o en cualquier parte para desbloquear el audio</div></div>
+                <button class="btn btn-primary btn-sm" onclick="unlockAudio(true); playSound('success')">🔊 Activar</button>
+              </div>
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:800;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--panel-2)">
+                <input type="checkbox" id="fxReverb" onchange="setFX({reverb:this.checked})" style="width:18px;height:18px;accent-color:var(--primary)">
+                <span>🏛️ Reverb envolvente</span>
+                <span style="margin-left:auto;font-size:11px;color:var(--muted)">Sala / Hall</span>
+              </label>
+              <div>
+                <label style="font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--muted);text-transform:uppercase">Intensidad reverb — <span id="fxReverbLevelLabel">38%</span></label>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+                  <span style="font-size:12px">🏜️</span>
+                  <input type="range" id="fxReverbLevel" min="0" max="100" value="38" oninput="setFX({reverbLevel: this.value/100}); document.getElementById('fxReverbLevelLabel').textContent=this.value+'%'; if(soundEnabled) tone(660,0.16,'sine',0.32)" style="flex:1;accent-color:#7c5cff;height:6px">
+                  <span style="font-size:12px">🏛️</span>
+                  <button class="btn btn-ghost btn-sm" onclick="setFX({reverb:true}); unlockAudio(true); playSound('info')">▶️</button>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--panel-2)">
+                  <input type="checkbox" id="fxEcho" onchange="setFX({echo:this.checked})" style="accent-color:var(--primary)"> 🔊 Eco (delay 220ms)
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--panel-2)">
+                  <input type="checkbox" id="fxBoost" onchange="setFX({boost:this.checked})" style="accent-color:var(--primary)"> 🚀 Boost +18%
+                </label>
+              </div>
+              <div style="font-size:11px;color:var(--muted)">Reverb usa <code>Convolver</code> + <code>DynamicsCompressor</code> para volumen fuerte y envolvente. Eco añade retardo sutil. Boost +18% para laptop.</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><div><h2>Configuración</h2><p>Elige tu alarma por defecto</p></div><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="stopAlarms(); showToast('Alarmas detenidas','info')">⏹️ Detener</button></div>
+            <div class="panel-body" style="display:grid;gap:14px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <label style="font-size:13px;font-weight:700">Alarma por defecto
+                  <select id="cfgDefaultAlarm" onchange="setAlertConfig({defaultAlarm:this.value})" style="width:100%;margin-top:6px;padding:10px;border-radius:10px;border:1px solid var(--border);background:white;font-weight:700">
+                    <option value="alarm_phone">📱 Teléfono</option>
+                    <option value="alarm_classic">⏰ Clásica</option>
+                    <option value="alarm_urgent">🚨 Urgente</option>
+                    <option value="alarm_soft">🔔 Suave</option>
+                    <option value="alarm_nokia">🎵 Nokia</option>
+                  </select>
+                </label>
+                <label style="font-size:13px;font-weight:700">Repeticiones (1-6)
+                  <input type="number" id="cfgLoops" min="1" max="6" value="3" onchange="setAlertConfig({loops:parseInt(this.value)})" style="width:100%;margin-top:6px;padding:10px;border-radius:10px;border:1px solid var(--border);font-weight:700">
+                </label>
+              </div>
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:800;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--panel-2)">
+                <input type="checkbox" id="cfgVibration" onchange="setAlertConfig({vibration:this.checked})" style="width:18px;height:18px;accent-color:var(--primary)">
+                <span>📳 Vibración en móvil</span>
+                <span style="margin-left:auto;font-size:12px;color:var(--muted)">navigator.vibrate</span>
+              </label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="playAlarm(document.getElementById('cfgDefaultAlarm').value, parseInt(document.getElementById('cfgLoops').value||3))">▶️ Probar alarma por defecto</button>
+                <button class="btn btn-ghost btn-sm" onclick="playAlarm('alarm_phone',3)">📱 Teléfono</button>
+                <button class="btn btn-ghost btn-sm" onclick="playAlarm('alarm_urgent',2)">🚨 Urgente</button>
+              </div>
+              <div style="font-size:11px;color:var(--muted)">Las alarmas son repetitivas y urgentes. Pulsa <b>Detener</b> para cancelar cualquier alarma en curso.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Test grid -->
+        <div class="panel" style="margin-top:16px">
+          <div class="panel-head"><div><h2>🎵 Probar todos los sonidos</h2><p>Haz clic para escuchar cada efecto • Respeta el volumen maestro</p></div><span class="tag">16 sonidos + 5 alarmas</span></div>
+          <div class="panel-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px" id="soundTestGrid"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:16px;background:linear-gradient(135deg,#f8fafc,#f5f3ff);border:1px dashed #ddd6fe">
+          <div class="panel-body" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font-size:22px">🔧</span>
+            <div style="flex:1"><b>¿No suena?</b><div style="font-size:12px;color:var(--muted)">Verifica que el navegador no tenga la pestaña silenciada, sube el volumen del sistema y haz clic en la página. El estado se sincroniza entre pestañas automáticamente.</div></div>
+            <button class="btn btn-ghost btn-sm" onclick="localStorage.clear(); location.reload()">♻️ Restablecer</button>
+          </div>
+        </div>
+      </section>
+
+      <div style="text-align:center;padding:18px;color:var(--muted);font-size:11px">Diseñado para ayudarte • Simple, rápido y privado</div>
+    </main>
+  </div>
+
+  <!-- Modal Vista Previa -->
+  <div class="doc-preview-overlay" id="previewOverlay" onclick="if(event.target===this) closePreview()">
+    <div class="doc-preview-card">
+      <div class="doc-preview-head">
+        <div style="flex:1;min-width:0">
+          <h3 id="previewTitle">Vista previa</h3>
+          <div style="font-size:11px;color:var(--muted)" id="previewSub">—</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="downloadPreview()">⬇️ Descargar</button>
+          <button class="btn btn-primary btn-sm" onclick="closePreview()">✕ Cerrar</button>
+        </div>
+      </div>
+      <div class="doc-preview-body" id="previewBody"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMsg" style="font-size:13px;font-weight:700;color:var(--text)"></span></div>
+
+<script src="/frontend/analyzer.js"></script>
+<script src="/frontend/processor.js"></script>
+<script src="/frontend/response.js"></script>
+<script src="/frontend/app.js"></script>
+<script src="/frontend/sounds.js"></script>
+<script src="/frontend/script.js"></script>
+<script>
+function toggleMobileMenu(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  if(sb) sb.classList.toggle('mobile-open');
+  if(ov) ov.classList.toggle('show');
+  try{ document.body.style.overflow = sb && sb.classList.contains('mobile-open') ? 'hidden' : ''; }catch(e){}
+}
+function closeMobileMenu(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  if(sb) sb.classList.remove('mobile-open');
+  if(ov) ov.classList.remove('show');
+  try{ document.body.style.overflow = ''; }catch(e){}
+}
+</script>
+<script id="docs-nav-responsive-js">
+(function(){
+  function syncHeaderHeight(){
+    var h=document.querySelector('.header'); if(!h) return;
+    document.documentElement.style.setProperty('--app-header-h', h.offsetHeight+'px');
+  }
+  function recenterNav(){
+    var nav=document.querySelector('.sidebar .nav'); if(!nav) return;
+    var act=nav.querySelector('.nav-btn.active')||nav.querySelector('.nav-btn'); if(!act) return;
+    if(nav.scrollWidth<=nav.clientWidth+4) return;
+    var pad=12;
+    var left=Math.max(0,Math.min(act.offsetLeft-pad, nav.scrollWidth-nav.clientWidth));
+    if(Math.abs(left-nav.scrollLeft)<2) return;
+    try{ nav.scrollTo({left:left,behavior:'smooth'}); }catch(e){ nav.scrollLeft=left; }
+  }
+  window.addEventListener('click',function(e){
+    var t=e.target;
+    if(t && t.closest && t.closest('#mobileMenuBtn')) setTimeout(recenterNav,90);
+  },true);
+  document.addEventListener('DOMContentLoaded',function(){ syncHeaderHeight(); setTimeout(recenterNav,150); });
+  window.addEventListener('resize',syncHeaderHeight);
+  window.addEventListener('load',syncHeaderHeight);
+})();
+</script>
+<script id="salida-sonido">
+/* Sonido propio al salir hacia Documentación / Mi espacio / Ayuda */
+(function(){
+  var MAP = { 'documentacion.html':'documentacion', 'estado-db.html':'espacio', 'ayuda.html':'ayuda' };
+  document.addEventListener('click', function(e){
+    if(e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest('a[href]'); if(!a) return;
+    var href = a.getAttribute('href') || '';
+    for(var k in MAP){
+      if(href.indexOf(k) !== -1){
+        if(typeof playSound !== 'function') return;
+        e.preventDefault();
+        try{ playSound(MAP[k]); }catch(err){}
+        try{ if(typeof closeMobileMenu === 'function') closeMobileMenu(); }catch(err){}
+        setTimeout(function(){ window.location.href = a.href; }, 170);
+        return;
+      }
+    }
+  }, true);
+})();
+</script>
+</body>
+</html>

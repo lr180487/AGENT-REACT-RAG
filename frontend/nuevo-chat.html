@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nuevo Chat — Tus conversaciones</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="favicon.png">
+<style>
+  :root{
+    --bg:#fafaf9; --panel:#ffffff; --panel-2:#f9fafb; --border:#e5e7eb; --border-strong:#d1d5db; --muted:#6b7280; --text:#111827;
+    --primary:#18181b; --primary-2:#27272a; --primary-soft:#f4f4f5; --accent:#52525b; --accent-2:#71717a;
+    --success:#111827; --success-soft:#f4f4f5; --warning:#71717a; --warning-soft:#fafafa; --danger:#18181b; --danger-soft:#f4f4f5;
+    --radius:10px; --radius-sm:8px; --shadow:0 1px 3px rgba(0,0,0,.06); --shadow-lg:0 4px 12px rgba(0,0,0,.08);
+    --gradient-primary:#18181b; --gradient-panel:#ffffff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#cbd5e1 #f1f5f9;overflow-y:auto;overflow-x:hidden;height:auto}
+  html::-webkit-scrollbar{width:12px;height:12px}
+  html::-webkit-scrollbar-track{background:#f1f5f9}
+  html::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px;border:3px solid #f1f5f9;background-clip:content-box}
+  html::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+  body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+  body::-webkit-scrollbar{width:12px;height:12px}
+  body::-webkit-scrollbar-track{background:#f1f5f9}
+  body::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px;border:3px solid #f1f5f9;background-clip:content-box;min-height:50px}
+  body::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+  body::-webkit-scrollbar-thumb:active{background:var(--primary)}
+  /* Scrollbar custom para cada scroll */
+  .chat-list::-webkit-scrollbar, .chat-scroll::-webkit-scrollbar, .msg-edit::-webkit-scrollbar{width:12px;height:12px}
+  .chat-list::-webkit-scrollbar-track, .chat-scroll::-webkit-scrollbar-track{background:#eef2f7;border-radius:999px;margin:3px 2px;border:1px solid #e2e8f0}
+  .chat-list::-webkit-scrollbar-thumb, .chat-scroll::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:999px;border:3px solid #eef2f7;background-clip:content-box;min-height:60px}
+  .chat-list::-webkit-scrollbar-thumb:hover, .chat-scroll::-webkit-scrollbar-thumb:hover{background:#7c5cff}
+  .chat-list::-webkit-scrollbar-thumb:active, .chat-scroll::-webkit-scrollbar-thumb:active{background:var(--primary);border-color:#ede9fe}
+  .chat-list, .chat-scroll{scrollbar-width:thin;scrollbar-color:#cbd5e1 #f1f5f9;scrollbar-gutter:stable}
+  html, body{scrollbar-gutter:stable}
+  /* Scroll independiente corregido: cada ventana scrollea sola sin arrastrar la página */
+  /* Botón flotante para volver abajo */
+  .scroll-bottom{position:absolute;bottom:88px;right:20px;width:40px;height:40px;border-radius:50%;background:white;border:1px solid var(--border);box-shadow:0 8px 22px rgba(15,23,42,.14),0 2px 6px rgba(15,23,42,.06);display:grid;place-items:center;cursor:pointer;color:var(--primary);font-size:15px;font-weight:900;opacity:0;transform:translateY(8px) scale(.96);pointer-events:none;transition:opacity .2s, transform .2s;z-index:5}
+  .scroll-bottom.show{opacity:1;transform:none;pointer-events:auto}
+  .scroll-bottom:hover{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:white;border-color:transparent;transform:translateY(-1px);box-shadow:0 10px 24px rgba(124,92,255,.22)}
+  .scroll-chats{position:absolute;bottom:96px;left:50%;transform:translateX(-50%) translateY(8px) scale(.96);width:32px;height:32px;border-radius:50%;background:white;border:1px solid var(--border);box-shadow:0 6px 18px rgba(15,23,42,.12);display:grid;place-items:center;cursor:pointer;color:var(--primary);font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:6}
+  .scroll-chats.show{opacity:1;transform:translateX(-50%) scale(1);pointer-events:auto}
+  .scroll-chats:hover{background:var(--primary);color:white;border-color:var(--primary)}
+  .chat-main{position:relative;display:flex;flex-direction:column;min-height:0;overflow:visible}
+  /* Header */
+  .header{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.96);backdrop-filter:blur(10px);flex-shrink:0}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo-wrap{position:relative;width:44px;height:44px;display:grid;place-items:center}
+  .logo{width:36px;height:36px;border-radius:10px;background:white;border:1px solid var(--border);display:grid;place-items:center;overflow:hidden;padding:2px;box-shadow:0 4px 12px rgba(15,23,42,.08);z-index:2;font-size:17px}
+  .logo-spinner{position:absolute;inset:0;width:44px;height:44px;border-radius:14px;border:3px solid #e8ecf3;border-top-color:var(--primary);border-right-color:#2ec5ff;opacity:0;visibility:hidden;transition:opacity .25s}
+  .logo-wrap.loading .logo-spinner, .logo-wrap.initial-loading .logo-spinner{opacity:1;visibility:visible;animation:spin .9s linear infinite}
+  .logo-wrap.loading .logo-spinner{animation-duration:.6s}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .brand h1{font-size:14px;font-weight:900}
+  .brand p{font-size:10px;color:var(--muted);font-weight:600;margin-top:1px}
+  .header-actions{display:flex;align-items:center;gap:8px}
+  .select{padding:8px 10px;border-radius:999px;background:#f8fafc;border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text);outline:none}
+  .btn{appearance:none;border:none;cursor:pointer;font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;transition:.15s;display:inline-flex;align-items:center;gap:7px}
+  .btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:white;box-shadow:0 6px 16px rgba(124,92,255,.24)}
+  .btn-ghost{background:white;border:1px solid var(--border);color:var(--text)}
+  .btn-ghost:hover{background:var(--panel-2)}
+  .btn-sm{padding:7px 11px;font-size:12px}
+  .badge{font-size:10px;font-weight:800;padding:3px 7px;border-radius:999px;border:1px solid var(--border);background:white}
+  .badge.db{color:var(--success);border-color:rgba(16,185,129,.25);background:#ecfdf5}
+  .badge.local{color:var(--warning);border-color:#fde68a;background:#fffbeb}
+  /* Layout */
+  .app{display:grid;grid-template-columns:300px 1fr;flex:1;min-height:calc(100vh - 56px);overflow:visible}
+  @media(max-width:900px){.app{grid-template-columns:1fr;overflow-y:auto} body{overflow-y:auto} html{overflow-y:auto}} /* fila: handled */
+  .sidebar{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:visible;position:relative;min-height:0}
+  .side-top{padding:12px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+  .side-search{position:relative}
+  .side-search input{width:100%;padding:9px 11px 9px 34px;border-radius:10px;background:#f8fafc;border:1px solid var(--border);font-size:13px;font-weight:600;outline:none;color:var(--text)}
+  .side-search input:focus{border-color:rgba(124,92,255,.4);box-shadow:0 0 0 3px rgba(124,92,255,.10);background:white}
+  .side-search span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}
+  /* Lista con scroll propio */
+  .chat-list{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px;display:flex;flex-direction:column;gap:7px;scroll-behavior:smooth;overscroll-behavior:contain;
+    background:
+      linear-gradient(white, rgba(255,255,255,0)) center top / 100% 14px no-repeat,
+      linear-gradient(rgba(255,255,255,0), white) center bottom / 100% 14px no-repeat,
+      radial-gradient(farthest-side at 50% 0, rgba(15,23,42,.10), transparent) center top / 100% 10px no-repeat,
+      radial-gradient(farthest-side at 50% 100%, rgba(15,23,42,.10), transparent) center bottom / 100% 10px no-repeat;
+    background-attachment: local, local, scroll, scroll;
+  }
+  .chat-item{padding:10px 11px;border-radius:12px;border:1px solid transparent;cursor:pointer;display:flex;flex-direction:column;gap:5px;transition:.15s;position:relative;background:white}
+  .chat-item:hover{border-color:var(--border);box-shadow:0 2px 10px rgba(15,23,42,.05);transform:translateY(-1px)}
+  .chat-item.active{background:linear-gradient(135deg,rgba(124,92,255,.09),rgba(46,197,255,.07));border-color:rgba(124,92,255,.24);box-shadow:0 4px 14px rgba(124,92,255,.10)}
+  .chat-item-top{display:flex;align-items:center;gap:6px}
+  .chat-item-top strong{flex:1;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item-actions{display:flex;gap:4px;opacity:0;transition:.15s}
+  .chat-item:hover .item-actions{opacity:1}
+  .mini-icon{width:22px;height:22px;border-radius:7px;background:var(--panel-2);border:1px solid var(--border);display:grid;place-items:center;font-size:11px;cursor:pointer}
+  .mini-icon:hover{background:white;border-color:var(--border-strong)}
+  .mini-icon.danger:hover{background:var(--danger);color:white;border-color:var(--danger)}
+  .chat-item p{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-item small{font-size:10px;color:var(--muted);font-weight:700;display:flex;gap:6px;align-items:center}
+  .side-footer{padding:10px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+  .tip{padding:10px;border-radius:10px;background:#f8f9ff;border:1px solid #e6e8ff;font-size:11px;line-height:1.5;color:var(--muted)}
+  /* Chat main - scroll por chat */
+  .chat-main{display:flex;flex-direction:column;min-width:0;background: radial-gradient(600px 280px at 50% 0%, rgba(124,92,255,.06), transparent 65%), var(--bg)}
+  .chat-header-mini{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.85);backdrop-filter:blur(6px);flex-shrink:0}
+  .chat-title{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+  .chat-title strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .chat-title input{flex:1;max-width:320px;padding:6px 8px;border-radius:8px;border:1px solid var(--primary);font-size:13px;font-weight:700;outline:none}
+  .chat-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth;position:relative;overscroll-behavior:contain;max-height:calc(100vh - 56px - 42px - 92px);min-height:360px;
+    background-color:#ffffff;
+    border:1px solid var(--border);
+    border-radius:18px;
+    margin:12px;
+    box-shadow:var(--shadow);
+    background-image:
+      linear-gradient(white, rgba(255,255,255,0)) ,
+      linear-gradient(rgba(255,255,255,0), white) ,
+      radial-gradient(farthest-side at 50% 0, rgba(15,23,42,.08), transparent),
+      radial-gradient(farthest-side at 50% 100%, rgba(15,23,42,.08), transparent);
+    background-size: 100% 18px, 100% 18px, 100% 12px, 100% 12px;
+    background-position: center top, center bottom, center top, center bottom;
+    background-repeat: no-repeat;
+    background-attachment: local, local, scroll, scroll;
+  }
+  .scroll-anchor{height:1px}
+  .load-more{margin:0 auto;padding:6px 12px;border-radius:999px;background:white;border:1px solid var(--border);font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;display:none}
+  .load-more.show{display:inline-flex}
+  .empty{flex:1;display:grid;place-items:center;padding:20px;text-align:center}
+  .empty-card{max-width:560px;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:var(--shadow)}
+  .empty-card h2{font-size:18px;font-weight:900;margin-bottom:6px}
+  .empty-card p{font-size:13px;color:var(--muted);line-height:1.6}
+  .suggestions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;text-align:left}
+  .suggestion{padding:12px;border-radius:12px;background:#f8fafc;border:1px solid var(--border);cursor:pointer;transition:.15s}
+  .suggestion:hover{background:white;border-color:rgba(124,92,255,.25);transform:translateY(-1px);box-shadow:0 6px 16px rgba(15,23,42,.06)}
+  .suggestion strong{font-size:12px;display:block;margin-bottom:4px}
+  .suggestion span{font-size:11px;color:var(--muted)}
+  @media(max-width:600px){.suggestions{grid-template-columns:1fr}}
+  .msg-row{display:flex;gap:10px;max-width:860px;width:100%;margin:0 auto;position:relative;group}
+  .msg-row.user{justify-content:flex-end}
+  .avatar{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:13px;font-weight:900;flex-shrink:0}
+  .avatar.bot{background:var(--panel);border:1px solid var(--border)}
+  .avatar.user{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:white}
+  .bubble{max-width:min(680px, 78%);padding:13px 14px;border-radius:16px;font-size:13px;line-height:1.6;box-shadow:0 2px 10px rgba(15,23,42,.05);position:relative;word-break:break-word}
+  .bubble.bot{background:var(--panel);border:1px solid var(--border);border-bottom-left-radius:6px}
+  .bubble.user{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:white;border-bottom-right-radius:6px;box-shadow:0 8px 18px rgba(124,92,255,.22)}
+  .bubble small{opacity:.75;font-size:11px;display:block;margin-top:6px}
+  .bubble.bot small{color:var(--muted)}
+  .bubble-actions{position:absolute;top:-10px;right:10px;display:flex;gap:4px;background:white;border:1px solid var(--border);border-radius:999px;padding:3px;box-shadow:0 4px 12px rgba(15,23,42,.1);opacity:0;transform:translateY(4px);transition:.15s;pointer-events:none}
+  .msg-row:hover .bubble-actions{opacity:1;transform:none;pointer-events:auto}
+  .bubble-actions button{width:24px;height:24px;border-radius:999px;border:none;background:var(--panel-2);display:grid;place-items:center;font-size:11px;cursor:pointer}
+  .bubble-actions button:hover{background:var(--primary);color:white}
+  .bubble-actions button.danger:hover{background:var(--danger)}
+  .bubble-text{max-height:none;overflow:visible;padding-right:0}
+  .bubble-text::-webkit-scrollbar{width:6px}
+  .bubble-text::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:999px}
+  .bubble-text::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+  .msg-edit{width:100%;min-height:60px;resize:vertical;padding:10px;border-radius:10px;border:1px solid var(--primary);font-size:13px;font-family:inherit}
+  .edit-actions{display:flex;gap:8px;margin-top:8px}
+  .typing{display:inline-flex;gap:4px;align-items:center;padding:12px 14px;background:white;border:1px solid var(--border);border-radius:16px;border-bottom-left-radius:6px}
+  .typing i{width:6px;height:6px;border-radius:50%;background:var(--primary);animation:bounce 1s infinite}
+  .typing i:nth-child(2){animation-delay:.15s;background:#2ec5ff}
+  .typing i:nth-child(3){animation-delay:.3s;background:var(--primary-2)}
+  @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.45}40%{transform:translateY(-4px);opacity:1}}
+  /* Composer */
+  .composer{padding:12px 14px;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid var(--border);flex-shrink:0}
+  .composer-inner{max-width:860px;margin:0 auto;display:flex;gap:10px;align-items:flex-end;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:8px;box-shadow:var(--shadow)}
+  .composer-inner:focus-within{border-color:rgba(124,92,255,.35);box-shadow:0 0 0 4px rgba(124,92,255,.10)}
+  .icon-btn{width:36px;height:36px;border-radius:10px;background:#f8fafc;border:1px solid var(--border);display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+  .icon-btn:hover{background:white;color:var(--text)}
+  .input{flex:1;max-height:120px;min-height:36px;resize:none;outline:none;border:none;background:transparent;font-size:13px;font-weight:600;color:var(--text);padding:8px 4px;line-height:1.5}
+  .input::placeholder{color:#94a3b8}
+  .send{width:38px;height:38px;border-radius:11px;border:none;background:linear-gradient(135deg,var(--primary),var(--primary-2));color:white;display:grid;place-items:center;cursor:pointer;box-shadow:0 6px 14px rgba(124,92,255,.25);flex-shrink:0}
+  .send:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+  .composer-hint{max-width:860px;margin:8px auto 0;display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}
+  /* Export menu */
+  .export-menu{position:absolute;top:calc(100% + 6px);left:0;right:0;background:white;border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);z-index:20;overflow:hidden;display:none}
+  .export-menu.show{display:block;animation:fade .15s ease}
+  .export-opt{width:100%;text-align:left;padding:10px 12px;border:none;background:white;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px}
+  .export-opt:hover{background:var(--panel-2)}
+
+  /* Page Loader — overlay elegante */
+  .page-loader{position:fixed;inset:0;background:rgba(255,255,255,.9);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:9999;transition:opacity .3s ease, visibility .3s;animation:autoHideLoader 0s 1.8s forwards}
+  .page-loader.hidden{opacity:0;visibility:hidden;pointer-events:none;animation:none}
+  @keyframes autoHideLoader{to{opacity:0;visibility:hidden;pointer-events:none}}
+  .loader-card{display:flex;flex-direction:column;align-items:center;gap:16px;padding:28px 32px;background:white;border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow-lg)}
+  .loader-spinner{width:32px;height:32px;border:2px solid #e5e7eb;border-top-color:var(--primary);border-radius:50%;animation:spin .6s linear infinite}
+  .loader-text{font-size:13px;font-weight:800;color:var(--muted);letter-spacing:.04em}
+  .loader-sub{font-size:11px;color:#94a3b8}
+
+  /* Mejoras de diseño — más cálido y minimal */
+  .header{height:60px;padding:0 18px}
+  .brand h1{font-size:15px}
+  .side-top{padding:14px}
+  .chat-item{border-radius:14px}
+  .chat-item.active{background:linear-gradient(135deg,rgba(124,92,255,.08),rgba(46,197,255,.06));border-color:rgba(124,92,255,.18)}
+  .bubble{border-radius:18px}
+  .bubble.user{border-radius:18px 18px 6px 18px}
+  .bubble.bot{border-radius:18px 18px 18px 6px}
+  .composer-inner{border-radius:18px}
+  .btn{border-radius:14px}
+  .empty-card{border-radius:20px}
+  .export-menu{border-radius:14px}
+  .icon-btn{border-radius:10px}
+  /* Suavizar fondos */
+  .chat-main{background: radial-gradient(700px 320px at 50% 0%, rgba(124,92,255,.05), transparent 65%), var(--bg)}
+  .chat-list{gap:8px}
+
+  #alarmMenu2{display:none !important} #alarmMenu2.show{display:none !important}
+  /* Scroll de página — botón flotante arriba */
+  #pageScrollTop{position:fixed;bottom:20px;right:20px;width:42px;height:42px;border-radius:50%;background:white;border:1px solid var(--border);box-shadow:0 8px 22px rgba(15,23,42,.16);display:grid;place-items:center;cursor:pointer;color:var(--primary);font-size:16px;font-weight:900;opacity:0;transform:translateY(8px) scale(.96);pointer-events:none;transition:.2s;z-index:40}
+  #pageScrollTop.show{opacity:1;transform:none;pointer-events:auto}
+  #pageScrollTop:hover{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:white;border-color:transparent}
+
+  /* Descarga mensajes — reemplaza caja */
+  .messages-full-box{margin:14px 16px;background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:visible}
+  .messages-full-head{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#ffffff,#fbfcff)}
+  .messages-full-head h3{font-size:12px;font-weight:900}
+  .messages-full-list{padding:12px;display:flex;flex-direction:column;gap:8px;overflow:visible}
+  .full-msg{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#f8fafc;font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;overflow:visible}
+  .full-msg.user{background:linear-gradient(135deg,rgba(124,92,255,.08),rgba(46,197,255,.06))}
+  .full-msg.bot{background:white}
+
+  /* SCROLL PÁGINA + CHAT — ambos con scroll independiente y visible */
+
+  /* === COLORES v3 — 2026-10-19: paleta más cálida, vibrante y accesible === */
+  body{background:var(--bg)}
+  .header{background:rgba(255,255,255,.96);border-bottom:1px solid #e8ecf3;box-shadow:0 1px 3px rgba(15,23,42,.04), 0 4px 20px rgba(124,92,255,.04)}
+  .brand h1{letter-spacing:-.2px}
+  .btn-primary{background:var(--gradient-primary);box-shadow:0 8px 22px rgba(124,92,255,.28);border:1px solid rgba(255,255,255,.2)}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(124,92,255,.32);filter:brightness(1.04)}
+  .btn-ghost{background:white;border-color:var(--border);box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  .btn-ghost:hover{background:var(--primary-soft);border-color:rgba(124,92,255,.22);color:var(--primary-2)}
+  .sidebar{background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);border-right:1px solid #e8ecf3}
+  .nav-btn.active{background:linear-gradient(135deg,rgba(124,92,255,.09),rgba(6,182,214,.07));border-color:rgba(124,92,255,.20);box-shadow:0 4px 16px rgba(124,92,255,.09)}
+  .nav-btn:hover{background:var(--primary-soft);color:var(--primary-2)}
+  .nav-btn .icon{background:var(--panel-2);border-color:var(--border)}
+  .nav-btn.active .icon{background:var(--gradient-primary);color:white;border-color:transparent;box-shadow:0 4px 12px rgba(124,92,255,.25)}
+  .side-footer{background:linear-gradient(135deg,#f8f9ff 0%,#f5f3ff 50%,#ecfeff 100%) !important;border-color:#e0e7ff !important}
+  .panel{background:white;border-color:var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .panel-head{background:var(--gradient-panel);border-bottom:1px solid #f1f5f9}
+  .mini-card{border-radius:var(--radius);background:white;border-color:var(--border)}
+  .mini-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:rgba(124,92,255,.15)}
+  .mini-card .bar{background:#eef2ff}
+  .mini-card .bar i{background:var(--gradient-primary)}
+  .tag{background:white;border-color:var(--border);color:var(--muted)}
+  .tag.on{background:var(--success-soft);color:var(--success);border-color:rgba(5,150,105,.18)}
+  .prov:hover{border-color:rgba(124,92,255,.28);box-shadow:0 6px 20px rgba(124,92,255,.08)}
+  .prov.active{background:linear-gradient(135deg,rgba(124,92,255,.09),rgba(6,182,214,.06));border-color:var(--primary);box-shadow:0 0 0 4px rgba(124,92,255,.10)}
+  .chat-box{background:white;border-color:var(--border);box-shadow:0 4px 24px rgba(15,23,42,.06)}
+  .msg.user{background:var(--gradient-primary);box-shadow:0 6px 18px rgba(124,92,255,.24)}
+  .msg.bot{background:white;border-color:var(--border);box-shadow:0 2px 10px rgba(15,23,42,.05)}
+  .drop{border-color:#cbd5e1;background:#fbfdff}
+  .drop.drag{background:var(--primary-soft);border-color:var(--primary)}
+  .doc-card:hover{border-color:rgba(124,92,255,.22);box-shadow:0 8px 24px rgba(124,92,255,.08)}
+  .status-pill{background:white;border-color:var(--border);box-shadow:0 1px 3px rgba(15,23,42,.05)}
+  .llm-card.active-card{background:linear-gradient(135deg,rgba(5,150,105,.06),rgba(6,182,214,.04));border-color:rgba(5,150,105,.22)}
+  /* Scrollbar refinado v3 */
+  .chat-box::-webkit-scrollbar-thumb{background:#a5b4fc;border-color:#eef2ff}
+  .chat-box::-webkit-scrollbar-thumb:hover{background:var(--primary)}
+  .chat-box::-webkit-scrollbar-track{background:#eef2ff;border-color:#e0e7ff}
+  /* Bubble refinado v3 — nuevo-chat */
+  .bubble.user{background:var(--gradient-primary) !important;box-shadow:0 8px 20px rgba(124,92,255,.24) !important}
+  .bubble.bot{background:white !important;border-color:var(--border) !important}
+  .chat-item{background:white;border-color:transparent}
+  .chat-item:hover{border-color:var(--border);box-shadow:0 3px 12px rgba(15,23,42,.06)}
+  .chat-item.active{background:linear-gradient(135deg,rgba(124,92,255,.08),rgba(6,182,214,.06)) !important;border-color:rgba(124,92,255,.18) !important}
+  .composer-inner{background:white;border-color:var(--border);box-shadow:var(--shadow)}
+  .composer-inner:focus-within{border-color:rgba(124,92,255,.32);box-shadow:0 0 0 4px rgba(124,92,255,.11)}
+  .send{background:var(--gradient-primary);box-shadow:0 6px 16px rgba(124,92,255,.26)}
+  /* Main fondos degradados v3 */
+  .main{background:radial-gradient(800px 380px at 15% 0%, rgba(124,92,255,.06), transparent 60%), radial-gradient(800px 380px at 88% 0%, rgba(6,182,214,.05), transparent 60%), var(--bg) !important}
+  .chat-main{background:radial-gradient(700px 320px at 50% 0%, rgba(124,92,255,.05), transparent 65%), var(--bg) !important}
+
+.toast{position:fixed;bottom:18px;right:18px;background:white;border:1px solid var(--border);padding:12px 14px;border-radius:12px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-lg);transform:translateY(80px);opacity:0;transition:.25s;z-index:50}
+  .toast.show{transform:none;opacity:1}
+
+/* === HAMBURGERA EN FILA — TODAS LAS OPCIONES EN FILA HORIZONTAL MÓVIL === */
+@media(max-width:1100px){
+  .sidebar{
+    top:56px !important;
+    left:0 !important; right:0 !important; bottom:auto !important;
+    width:100% !important;
+    height:auto !important; max-height:68vh !important;
+    transform:translateY(-120%) !important;
+    border-right:none !important; border-bottom:1px solid var(--border) !important;
+    padding:12px 12px 10px !important;
+    flex-direction:column !important;
+    overflow-x:hidden !important; overflow-y:auto !important;
+    box-shadow:0 10px 30px rgba(15,23,42,.12) !important;
+    border-radius:0 0 16px 16px !important;
+  }
+  .sidebar.mobile-open{transform:translateY(0) !important;}
+  .sidebar .side-title{display:none !important;}
+  .sidebar .side-footer{display:none !important;}
+  .sidebar .nav{
+    flex-direction:row !important;
+    flex-wrap:nowrap !important;
+    gap:8px !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+    -webkit-overflow-scrolling:touch !important;
+    scrollbar-width:none !important;
+    padding-bottom:6px !important;
+    align-items:center !important;
+  }
+  .sidebar .nav::-webkit-scrollbar{display:none !important;}
+  .sidebar .nav-btn{
+    width:auto !important; flex:0 0 auto !important;
+    white-space:nowrap !important;
+    padding:10px 14px !important;
+    font-size:13px !important;
+  }
+  .sidebar.mobile-open .nav-btn{animation:fadeInRow .28s ease both;}
+  .sidebar.mobile-open .nav-btn:nth-child(1){animation-delay:.02s}
+  .sidebar.mobile-open .nav-btn:nth-child(2){animation-delay:.04s}
+  .sidebar.mobile-open .nav-btn:nth-child(3){animation-delay:.06s}
+  .sidebar.mobile-open .nav-btn:nth-child(4){animation-delay:.08s}
+  .sidebar.mobile-open .nav-btn:nth-child(5){animation-delay:.10s}
+  .sidebar.mobile-open .nav-btn:nth-child(6){animation-delay:.12s}
+  .sidebar.mobile-open .nav-btn:nth-child(7){animation-delay:.14s}
+  .sidebar.mobile-open .nav-btn:nth-child(8){animation-delay:.16s}
+  .sidebar.mobile-open .nav-btn:nth-child(9){animation-delay:.18s}
+  .sidebar.mobile-open .nav-btn:nth-child(10){animation-delay:.20s}
+  .sidebar.mobile-open .nav-btn:nth-child(11){animation-delay:.22s}
+  @keyframes fadeInRow{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  #mobileMenuBtn{display:inline-flex !important;}
+  .sidebar-overlay{top:56px !important; background:rgba(15,23,42,.18) !important; backdrop-filter:blur(2px);}
+}
+@media(max-width:640px){
+  .sidebar .nav{gap:6px !important;}
+  .sidebar .nav-btn{padding:8px 12px !important; font-size:12px !important;}
+  .sidebar .nav-btn .icon{width:22px !important;height:22px !important;font-size:12px !important;}
+}
+  .nav-btn .icon svg{width:15px;height:15px;display:block}
+  .nav-btn.active .icon svg{stroke:#fff}
+/* === HEADER MÓVIL EN 2 FILAS (nuevo-chat) === */
+@media (max-width:760px){
+  .header{height:auto !important; min-height:56px; padding:6px 12px !important; gap:8px; flex-wrap:nowrap}
+  /* wrapper interno (brand + título + badge + acciones) */
+  .header > div:first-of-type{
+    display:flex !important; flex-wrap:wrap !important; align-items:center;
+    gap:8px !important; flex:1 1 auto; min-width:0; width:100%;
+  }
+  .header > div:first-of-type .brand{flex:0 0 auto; min-width:0}
+  .header > div:first-of-type > div:nth-child(2){flex:1 1 auto; min-width:0}
+  .brand h1{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:15px}
+  .brand p{display:none}
+  #dbBadge{flex:0 0 auto}
+  .header-actions{
+    order:9; flex:0 0 100% !important; width:100% !important; max-width:100% !important;
+    flex-wrap:nowrap !important; gap:6px; overflow-x:auto; overflow-y:hidden;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch; padding:2px 0;
+  }
+  .header-actions::-webkit-scrollbar{display:none}
+  .header-actions > *{flex:0 0 auto}
+  .header-actions .btn{padding:6px 10px !important; font-size:12px !important; white-space:nowrap}
+  .header-actions .status-pill{padding:5px 9px !important; font-size:11px !important; white-space:nowrap}
+}
+</style>
+<script>
+/* alias seguro: connectLangChainWS2 no existía → delegar en connectLangChainWS (script.js) */
+if(typeof window.connectLangChainWS2!=='function'){
+  window.connectLangChainWS2=function(force){
+    try{ if(typeof connectLangChainWS==='function') return connectLangChainWS(!!force); }catch(e){}
+    return null;
+  };
+}
+function reconnectLangChainWS2(){
+  const dot=document.getElementById('wsLangchainDot2'), txt=document.getElementById('wsLangchainText2');
+  if(txt) txt.textContent='Reconectando…';
+  if(dot){ dot.style.background='#f59e0b'; dot.style.animation='pulse 1s ease infinite'; }
+  if(typeof playSound==='function') try{playSound('info');}catch(e){}
+  connectLangChainWS2(true);
+  setTimeout(()=>{ if(dot) dot.style.animation=''; if(typeof showToast==='function') showToast('Reconectando…','info'); },200);
+  setTimeout(()=>{ const t=document.getElementById('wsLangchainText2'); if(t && t.textContent==='Reconectando…'){ t.textContent='Sin conexión'; } },4000);
+}
+function configureBackend2(){ const cur=localStorage.getItem('backendUrl')||(location.protocol+'//'+location.host); const url=prompt('URL del backend',cur); if(url){localStorage.setItem('backendUrl',url); location.reload();} }
+document.addEventListener('DOMContentLoaded', ()=>connectLangChainWS2());
+setTimeout(()=>connectLangChainWS2(),700);
+
+</script>
+  <noscript><meta http-equiv="refresh" content="2;url=interfaz.html"></noscript>
+<style id="docs-nav-responsive-css">
+/* === MENÚ HAMBURGUESA: UNA FILA RESPONSIVA (scroll-snap) === */
+@media (max-width:1100px){
+  .sidebar .nav{
+    display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important;
+    gap:8px !important; overflow-x:auto !important; overflow-y:hidden !important;
+    -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+    scroll-snap-type:x proximity; scroll-padding-inline:10px;
+    padding:2px 2px 8px !important; scrollbar-width:none;
+  }
+  .sidebar .nav::-webkit-scrollbar{display:none}
+  .sidebar .nav-btn{
+    flex:0 0 auto !important; width:auto !important; white-space:nowrap !important;
+    scroll-snap-align:start; min-height:42px; border-radius:999px !important;
+    border:1px solid var(--border,#e2e8f0) !important; background:#fff !important;
+    box-shadow:0 2px 8px rgba(15,23,42,.05); padding:9px 14px !important; font-size:13px !important;
+  }
+  .sidebar .nav-btn.active{
+    background:linear-gradient(135deg,rgba(124,92,255,.14),rgba(46,197,255,.10)) !important;
+    border-color:rgba(124,92,255,.35) !important; color:var(--text,#0f172a) !important;
+  }
+}
+@media (max-width:640px){
+  .sidebar .nav{gap:6px !important}
+  .sidebar .nav-btn{min-height:38px; padding:7px 11px !important; font-size:12px !important; gap:6px !important}
+  .sidebar .nav-btn .icon{width:20px !important; height:20px !important; font-size:11px !important}
+}
+/* === PESTAÑAS UNIFICADAS DE DOCUMENTOS === */
+.docs-tabs{display:flex; flex-wrap:nowrap; gap:6px; align-items:center; overflow-x:auto;
+  scrollbar-width:none; padding:8px; margin:0 0 12px; background:#fff;
+  border:1px solid var(--border,#e2e8f0); border-radius:14px;
+  box-shadow:0 2px 10px rgba(15,23,42,.04); -webkit-overflow-scrolling:touch}
+.docs-tabs::-webkit-scrollbar{display:none}
+.docs-tab{flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:8px 13px;
+  border-radius:999px; border:1px solid transparent; background:#f1f5f9; color:#64748b;
+  font-weight:800; font-size:12.5px; cursor:pointer; white-space:nowrap; transition:all .16s ease}
+.docs-tab:hover{background:#eef2f7; color:#0f172a}
+.docs-tab.active{background:linear-gradient(135deg,rgba(124,92,255,.14),rgba(46,197,255,.12));
+  border-color:rgba(124,92,255,.32); color:#0f172a; box-shadow:0 4px 12px rgba(124,92,255,.12)}
+
+@media (max-width:640px){
+  /* header móvil: solo acciones esenciales, sin pills redundantes */
+  .header-actions .status-pill{display:none !important}
+}
+/* === CONTENCIÓN DEL GRID (evita que .main exceda el viewport) === */
+@media (max-width:1100px){
+  .layout{grid-template-columns:minmax(0,1fr) !important; width:100% !important; max-width:100%}
+  .main{min-width:0 !important; width:100% !important; max-width:100% !important}
+  .view{min-width:0 !important; max-width:100%}
+  .panel{min-width:0 !important; max-width:100%}
+  .top-cards{min-width:0}
+}
+/* el drawer arranca debajo del header real y queda 100% fuera de pantalla al cerrar */
+@media (max-width:1100px){
+  .sidebar{
+    top:var(--app-header-h,56px) !important;
+    transform:translateY(calc(-100% - var(--app-header-h,56px) - 8px)) !important;
+    visibility:hidden; pointer-events:none;
+    transition:transform .26s ease, visibility .26s ease;
+  }
+  .sidebar.mobile-open{
+    transform:translateY(0) !important;
+    visibility:visible; pointer-events:auto;
+  }
+  .sidebar-overlay{top:var(--app-header-h,56px) !important}
+}
+/* === HEADER COMPACTO EN TABLET/MÓVIL (evita overflow horizontal) === */
+@media (max-width:1100px){
+  html, body{max-width:100%; overflow-x:hidden}
+  .header{gap:8px; min-width:0}
+  #mobileMenuBtn{flex:0 0 auto}
+  .brand{min-width:0; flex:1 1 auto}
+  .brand h1{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px}
+  .brand p{display:none}
+  .header-actions{
+    display:flex !important; flex-wrap:nowrap !important; align-items:center; gap:6px;
+    min-width:0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  }
+  .header-actions::-webkit-scrollbar{display:none}
+  .header-actions > *{flex:0 0 auto}
+  .header-actions .btn{padding:6px 9px !important; font-size:12px !important; white-space:nowrap}
+  .header-actions .status-pill{padding:5px 9px !important; font-size:11px !important; white-space:nowrap}
+}
+@media (max-width:640px){
+  .header{flex-wrap:wrap !important; height:auto !important; min-height:56px !important; padding:6px 12px !important}
+  .header-actions{
+    width:100% !important; max-width:100% !important; margin-top:6px;
+    justify-content:flex-start !important; padding-bottom:2px;
+  }
+}
+</style>
+</head>
+<body>
+
+  <div id="pageLoader" class="page-loader" aria-hidden="true" data-redirect="">
+    <div class="loader-card">
+      <div style="position:relative;width:48px;height:48px;display:grid;place-items:center">
+        <div class="loader-spinner" style="position:absolute;inset:0;width:48px;height:48px"></div>
+        <div style="width:40px;height:40px;border-radius:12px;background:white;border:1px solid #e2e8f0;display:grid;place-items:center;overflow:hidden;padding:3px"><img src="/frontend/favicon.png" alt="Logo" style="width:100%;height:100%;object-fit:contain"></div>
+      </div>
+      <div style="text-align:center">
+        <div class="loader-text">Cargando tus chats</div>
+        <div class="loader-sub">Un momento…</div>
+      </div>
+    </div>
+  </div>
+<script>'use strict';
+
+/* LOADER — ocultado inmediato e independiente (no depende del bundle principal) */
+(function(){
+  let pl=document.getElementById('pageLoader');
+  if(!pl) return;
+  let redirectUrl=(pl.getAttribute('data-redirect')||'').trim() || new URLSearchParams(location.search).get('redirect') || new URLSearchParams(location.search).get('to') || '';
+  // permitir ?redirect=interfaz.html o ?to=nuevo-chat.html
+  function hide(){
+    if(pl.classList.contains('hidden')) return;
+    pl.classList.add('hidden');
+    setTimeout(function(){
+      try{ pl.style.display='none'; pl.remove(); }catch(e){ try{pl.style.display='none';}catch(e2){} }
+      if(redirectUrl){
+        try{
+          let target=redirectUrl;
+          if(!/^https?:\/\//.test(target)){
+            // resolver relativo al HTML actual
+            // si termina en .html, ir directo; si no, añadir .html
+            target=new URL(target, location.href).href;
+          }
+          if(target!==location.href) location.href=target;
+        }catch(e){}
+      }
+    }, 620);
+  }
+  // ocultar tras 1s mínimo, si el usuario hace clic lo oculta ya
+  setTimeout(hide, 1200);
+  setTimeout(hide, 3200); // seguridad
+  pl.addEventListener('click', hide);
+  // Escape también
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') hide(); });
+  // Si la página ya cargó y el loader sigue, forzar al window load
+  window.addEventListener('load', function(){ setTimeout(hide, 400); });
+})();
+</script>
+
+  <header class="header">
+    <button class="btn btn-ghost btn-sm" id="mobileMenuBtn" onclick="toggleMobileMenu()" style="display:none;margin-right:8px" title="Menú">☰</button>
+    <div style="display:flex;align-items:center;gap:10px">
+      
+      <div class="brand">
+        <a href="/frontend/interfaz.html#view-ragchat" class="logo-wrap" id="logoWrap" title="Ir a página principal" style="text-decoration:none;cursor:pointer">
+          <div class="logo-spinner"></div>
+          <div class="logo" aria-hidden="true" style="background:white;border:1px solid var(--border);overflow:hidden;padding:2px;display:grid;place-items:center">
+            <img src="/frontend/favicon.png" alt="Logo asistente" style="width:100%;height:100%;object-fit:contain;display:block;border-radius:8px" onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='grid'">
+          <span id="logoFallback" class="logo-fallback" style="display:none;place-items:center;font-size:18px">🤖</span>
+          </div>
+        </a>
+        <div><h1>Chat</h1><p>Tus conversaciones</p></div>
+      <span id="dbBadge" class="badge local">● Listo</span>
+    </div>
+    <div class="header-actions">
+      <span class="status-pill" id="wsLangchainPill2" style="padding:6px 10px;font-size:11px;cursor:pointer" title="Clic para reconectar" onclick="reconnectLangChainWS2()"><span id="wsLangchainDot2" style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 0 5px rgba(16,185,129,.18)"></span> <b id="wsLangchainText2" style="margin-left:4px">En línea</b></span>
+      <button class="btn btn-ghost btn-sm" id="soundToggle2" onclick="toggleSound()" title="Sonidos">🔊</button>
+      <div style="position:relative">
+        <div id="alarmMenu2" style="position:absolute;top:calc(100% + 8px);right:0;background:white;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);padding:10px;display:none;flex-direction:column;gap:6px;z-index:40;min-width:240px;max-width:280px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 6px 8px;border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--muted)">CONFIGURACIÓN</div>
+            <span id="bellDefaultBadge2" style="font-size:10px;font-weight:800;background:#f5f3ff;color:#7c5cff;border:1px solid #ddd6fe;padding:2px 7px;border-radius:999px">📱 Teléfono</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" data-alarm="alarm_phone" style="justify-content:flex-start;gap:8px;padding:9px 10px;border:1px solid transparent;border-radius:10px" onclick="setBellDefault('alarm_phone');playAlarm('alarm_phone',3);closeBell('alarmMenu2')">📱 <span style="flex:1;text-align:left"><b>Teléfono</b> <span style="font-weight:400;color:var(--muted)">· 4 tonos</span></span><span class="def-dot" style="font-size:10px;color:var(--primary);display:none">●</span><span style="font-size:11px;opacity:.55">▶️</span></button>
+          <button class="btn btn-ghost btn-sm" data-alarm="alarm_classic" style="justify-content:flex-start;gap:8px;padding:9px 10px;border:1px solid transparent;border-radius:10px" onclick="setBellDefault('alarm_classic');playAlarm('alarm_classic',3);closeBell('alarmMenu2')">⏰ <span style="flex:1;text-align:left"><b>Clásica</b> <span style="font-weight:400;color:var(--muted)">· campana</span></span><span class="def-dot" style="font-size:10px;color:var(--primary);display:none">●</span><span style="font-size:11px;opacity:.55">▶️</span></button>
+          <button class="btn btn-ghost btn-sm" data-alarm="alarm_urgent" style="justify-content:flex-start;gap:8px;padding:9px 10px;border:1px solid transparent;border-radius:10px" onclick="setBellDefault('alarm_urgent');playAlarm('alarm_urgent',2);closeBell('alarmMenu2')">🚨 <span style="flex:1;text-align:left"><b>Urgente</b> <span style="font-weight:400;color:var(--muted)">· 5 tonos</span></span><span class="def-dot" style="font-size:10px;color:var(--primary);display:none">●</span><span style="font-size:11px;opacity:.55">▶️</span></button>
+          <button class="btn btn-ghost btn-sm" data-alarm="alarm_soft" style="justify-content:flex-start;gap:8px;padding:9px 10px;border:1px solid transparent;border-radius:10px" onclick="setBellDefault('alarm_soft');playAlarm('alarm_soft',2);closeBell('alarmMenu2')">🔔 <span style="flex:1;text-align:left"><b>Suave</b> <span style="font-weight:400;color:var(--muted)">· 2 tonos</span></span><span class="def-dot" style="font-size:10px;color:var(--primary);display:none">●</span><span style="font-size:11px;opacity:.55">▶️</span></button>
+          <button class="btn btn-ghost btn-sm" data-alarm="alarm_nokia" style="justify-content:flex-start;gap:8px;padding:9px 10px;border:1px solid transparent;border-radius:10px" onclick="setBellDefault('alarm_nokia');playAlarm('alarm_nokia',2);closeBell('alarmMenu2')">🎵 <span style="flex:1;text-align:left"><b>Nokia</b> <span style="font-weight:400;color:var(--muted)">· melodía</span></span><span class="def-dot" style="font-size:10px;color:var(--primary);display:none">●</span><span style="font-size:11px;opacity:.55">▶️</span></button>
+          <div style="padding:7px 8px 4px;display:flex;align-items:center;gap:8px;background:#f8fafc;border-radius:10px;border:1px solid #f1f5f9;margin-top:2px">
+            <span style="font-size:12px">🔊</span>
+            <input type="range" id="soundVolume2" min="0" max="100" value="85" oninput="setVolume(this.value)" style="flex:1;accent-color:var(--primary);height:5px">
+            <span id="soundVolumeLabel2" style="font-size:11px;font-weight:800;min-width:36px;text-align:right">85%</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:2px">
+            <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;color:#b91c1c;border:1px solid #fecaca;background:#fef2f2;font-weight:800" onclick="stopAlarms();showToast('Alarmas detenidas','info');closeBell('alarmMenu2')">⏹️ Detener</button>
+            <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;font-weight:700" onclick="closeBell('alarmMenu2'); document.getElementById('soundConfigModal').style.display='flex'">🎚️ Configurar</button>
+          </div>
+        </div>
+      </div>
+      
+      <a href="interfaz.html" class="btn btn-ghost btn-sm" style="text-decoration:none">← Interfaz</a>
+      <button class="btn btn-primary btn-sm" onclick="newChat()">＋ Nuevo Chat</button>
+    </div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileMenu()"></div>
+  <div class="app">
+        <aside class="sidebar" id="sidebar">
+      <div class="side-title">NAVEGACIÓN</div>
+      <nav class="nav">
+        <a href="/frontend/interfaz.html#view-chat" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.9L3 21l1.9-4.7A8.4 8.4 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z"/></svg></span> Chat / Consulta</a>
+        <a href="/frontend/interfaz.html#view-documents" class="nav-btn" data-nav-group="docs" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span> Documentos</a>
+        <a href="/frontend/interfaz.html#view-llm" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1 0 8v1a4 4 0 0 1-8 0v-1a4 4 0 0 1 0-8V6a4 4 0 0 1 4-4z"/><path d="M12 8v8"/></svg></span> Asistente</a>
+        <a href="/frontend/interfaz.html#view-sounds" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="7" cy="17" r="2" fill="currentColor" stroke="none"/></svg></span> Configuración</a>
+        <a href="/frontend/documentacion.html" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span> Documentación</a>
+        <a href="/frontend/estado-db.html" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg></span> Mi espacio</a>
+        <a href="/frontend/ayuda.html" class="nav-btn" onclick="closeMobileMenu()" style="text-decoration:none"><span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4"/><path d="M12 17h.01"/></svg></span> Ayuda</a>
+      </nav>
+    </aside>
+
+    <main class="chat-main">
+      <div class="chat-header-mini" id="chatHeaderMini" style="display:none">
+        <div class="chat-title" id="chatTitleBox">
+          <strong id="chatTitleText" onclick="startEditTitle()" title="Click para editar título"></strong>
+          <span id="chatTitleMeta" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="startEditTitle()">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteActiveChat()">🗑️ Eliminar chat</button>
+        </div>
+      </div>
+
+      <div class="chat-scroll" id="chatScroll">
+        <button id="loadMoreBtn" class="load-more" onclick="loadMore()">↑ Cargar mensajes anteriores</button>
+        <div class="empty" id="emptyState">
+          <div class="empty-card">
+            <div style="width:48px;height:48px;border-radius:14px;background:white;border:1px solid #e2e8f0;display:grid;place-items:center;margin:0 auto 10px;overflow:hidden;padding:4px"><img src="/frontend/favicon.png" alt="Logo" style="width:100%;height:100%;object-fit:contain"></div>
+            <h2>Tus conversaciones, siempre a mano</h2>
+            <p>Empezá una nueva conversación o retomá donde dejaste. Podés renombrar tus chats y editar mensajes.</p>
+            <div class="suggestions">
+              <div class="suggestion" onclick="quick('Resume el último documento en 5 puntos')"><strong>📄 Resumir</strong><span>Resume en 5 puntos</span></div>
+              <div class="suggestion" onclick="quick('Busca cláusulas de penalidad')"><strong>🔍 Buscar</strong><span>Cláusulas de penalidad</span></div>
+              <div class="suggestion" onclick="quick('Genera informe ejecutivo')"><strong>📊 Informe</strong><span>Ejecutivo gerencia</span></div>
+              <div class="suggestion" onclick="quick('¿Qué documentos tengo?')"><strong>🗂️ Inventario</strong><span>Lista indexados</span></div>
+            </div>
+            <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+              <span style="font-size:11px;padding:6px 10px;border-radius:999px;background:#f1f5f9;border:1px solid var(--border)">Tus chats, ordenados</span>
+              <span style="font-size:11px;padding:6px 10px;border-radius:999px;background:#f4f4f5;border:1px solid var(--border);color:var(--muted)">Listo</span>
+            </div>
+          </div>
+        </div>
+        <div id="messagesAnchor"></div>
+      </div>
+
+      <button id="scrollBottomBtn" class="scroll-bottom" onclick="scrollToBottom()" title="Ir abajo" aria-label="Ir al último mensaje">↓</button>
+      
+      <div class="panel" id="downloadMessagesPanel" style="margin:12px 16px">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,#ffffff,#fbfcff);border-radius:14px 14px 0 0">
+          <div>
+            <h3 style="font-size:12px;font-weight:900">⬇️ Descargar mensajes</h3>
+            <p style="font-size:11px;color:var(--muted)">Exporta este chat</p>
+          </div>
+          <span class="tag" id="downloadCountNuevo">0 mensajes</span>
+        </div>
+        <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="downloadNuevo('json')">🧾 JSON</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadNuevo('txt')">📃 TXT</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadNuevo('md')">📝 MD</button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadNuevo('html')">🖨️ HTML/PDF</button>
+        </div>
+      </div>
+      <div class="composer"><div class="composer-inner">
+          <button class="icon-btn" title="Adjuntar (PDF/DOCX/XLSX/PPT/CSV/TXT/MD)" onclick="document.getElementById('fileIn').click()">📎</button>
+          <input id="fileIn" type="file" hidden accept=".pdf,.docx,.doc,.xlsx,.xls,.ppt,.pptx,.csv,.txt,.md,.png,.jpg,.jpeg">
+          <textarea id="msgInput" class="input" rows="1" placeholder="Escribe tu mensaje… (Enter envía, Shift+Enter salto)" onkeydown="handleKey(event)" oninput="autoGrow(this)"></textarea>
+          <button id="sendBtn" class="send" onclick="send()" title="Enviar">➤</button>
+        </div>
+        <div class="composer-hint">
+          <span id="composerInfo">Asistente listo</span>
+          <span id="statusHint">Escribí tu mensaje y presioná Enter</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+</div>
+<!-- Modal Config Sonidos (nuevo-chat) -->
+<div id="soundConfigModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(6px);z-index:90;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this) this.style.display='none'">
+  <div style="background:white;border-radius:20px;box-shadow:0 24px 64px rgba(15,23,42,.18);max-width:640px;width:100%;max-height:90vh;overflow:auto;border:1px solid var(--border)">
+    <div style="padding:18px 18px 0;display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div><h2 style="font-size:16px;font-weight:900;margin:0">🔊 Configuración</h2><p style="font-size:12px;color:var(--muted);margin:2px 0 0">Configura volumen y alarmas — se guarda automáticamente</p></div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('soundConfigModal').style.display='none'">✕</button>
+    </div>
+    <div style="padding:16px;display:grid;gap:14px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:800;padding:12px;border:1px solid var(--border);border-radius:12px;background:#f8fafc">
+        <input type="checkbox" id="cfgSoundEnabled" onchange="setSoundEnabled(this.checked)" style="width:18px;height:18px;accent-color:var(--primary)">
+        <span>🎚️ Configuración activados</span><span id="cfgSoundStatus" class="tag" style="margin-left:auto;background:var(--success);color:white">● Activado</span>
+      </label>
+      <div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:14px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--muted)">VOLUMEN MAESTRO — <span id="cfgVolLabel">85%</span></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px"><span>🔈</span><input type="range" id="cfgMasterVol" min="0" max="100" value="85" oninput="setVolume(this.value)" style="flex:1;accent-color:var(--primary)"><span>🔊</span><button class="btn btn-primary btn-sm" onclick="playSound('info')">▶️</button></div>
+      </div>
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:14px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.07em;color:#9a3412">ALERTAS — <span id="cfgAlertVolLabel">90%</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+          <label style="font-size:12px;font-weight:700">Alarma<select id="cfgDefaultAlarm" onchange="setAlertConfig({defaultAlarm:this.value})" style="width:100%;margin-top:6px;padding:8px;border-radius:10px;border:1px solid var(--border)"><option value="alarm_phone">📱 Teléfono</option><option value="alarm_classic">⏰ Clásica</option><option value="alarm_urgent">🚨 Urgente</option><option value="alarm_soft">🔔 Suave</option><option value="alarm_nokia">🎵 Nokia</option></select></label>
+          <label style="font-size:12px;font-weight:700">Repeticiones<input type="number" id="cfgLoops" min="1" max="6" value="3" onchange="setAlertConfig({loops:parseInt(this.value)})" style="width:100%;margin-top:6px;padding:8px;border-radius:10px;border:1px solid var(--border)"></label>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px"><input type="range" id="cfgAlertVol" min="0" max="100" value="90" oninput="setAlertVolume(this.value)" style="flex:1;accent-color:#f59e0b"><span id="cfgAlertVolLabel" style="font-weight:800;min-width:32px;text-align:right">90%</span></div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-weight:700"><input type="checkbox" id="cfgVibration" onchange="setAlertConfig({vibration:this.checked})" style="accent-color:var(--primary)"> 📳 Vibración móvil</label>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="playAlarm(document.getElementById('cfgDefaultAlarm').value, parseInt(document.getElementById('cfgLoops').value||3))">▶️ Probar</button><button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="stopAlarms()">⏹️ Detener</button></div>
+      </div>
+      <div id="soundUnlockBanner" style="display:none;align-items:center;gap:10px;padding:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:12px">
+        <span style="font-size:20px">🔇</span>
+        <div style="flex:1"><b>Sonido bloqueado</b><div style="font-size:12px;color:#92400e">Pulsa <b>ACTIVAR</b> para desbloquear</div></div>
+        <button class="btn btn-primary btn-sm" onclick="unlockAudio(true); playSound('success')">🔊 Activar</button>
+      </div>
+      <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;padding:14px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.07em;color:#7c5cff">🎛️ EFECTOS — REVERB & BOOST</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:700"><input type="checkbox" id="fxReverb" onchange="setFX({reverb:this.checked})" style="accent-color:var(--primary)"> Reverb</label>
+          <input type="range" id="fxReverbLevel" min="0" max="100" value="38" oninput="setFX({reverbLevel:this.value/100})" style="flex:1;min-width:90px;accent-color:#7c5cff">
+          <span id="fxReverbLevelLabel" style="font-size:11px;font-weight:800;min-width:28px">38%</span>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:700"><input type="checkbox" id="fxEcho" onchange="setFX({echo:this.checked})"> Eco</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:700"><input type="checkbox" id="fxBoost" onchange="setFX({boost:this.checked})"> Boost</label>
+          <span id="fxStatusTag" style="font-size:10px;background:#f5f3ff;color:#7c5cff;border:1px solid #ddd6fe;padding:2px 6px;border-radius:999px">Reverb • Boost</span>
+        </div>
+      </div>
+      <div style="background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:14px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.07em;color:var(--muted)">PROBAR SONIDOS</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px" id="soundTestGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/frontend/analyzer.js"></script>
+<script src="/frontend/processor.js"></script>
+<script src="/frontend/response.js"></script>
+<script src="/frontend/app.js"></script>
+<script src="/frontend/sounds.js"></script>
+<script src="/frontend/nuevo-chat.js"></script>
+  <button id="pageScrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'}); playSound('info')" title="Ir arriba de la página" aria-label="Ir arriba">↑</button>
+
+<script>
+function toggleMobileMenu(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  if(sb) sb.classList.toggle('mobile-open');
+  if(ov) ov.classList.toggle('show');
+  try{ document.body.style.overflow = sb && sb.classList.contains('mobile-open') ? 'hidden' : ''; }catch(e){}
+}
+function closeMobileMenu(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  if(sb) sb.classList.remove('mobile-open');
+  if(ov) ov.classList.remove('show');
+  try{ document.body.style.overflow = ''; }catch(e){}
+}
+</script>
+
+<script id="docs-nav-responsive-js">
+(function(){
+  function syncHeaderHeight(){
+    var h=document.querySelector('.header'); if(!h) return;
+    document.documentElement.style.setProperty('--app-header-h', h.offsetHeight+'px');
+  }
+  function recenterNav(){
+    var nav=document.querySelector('.sidebar .nav'); if(!nav) return;
+    var act=nav.querySelector('.nav-btn.active')||nav.querySelector('.nav-btn'); if(!act) return;
+    if(nav.scrollWidth<=nav.clientWidth+4) return;
+    var pad=12;
+    var left=Math.max(0,Math.min(act.offsetLeft-pad, nav.scrollWidth-nav.clientWidth));
+    if(Math.abs(left-nav.scrollLeft)<2) return;
+    try{ nav.scrollTo({left:left,behavior:'smooth'}); }catch(e){ nav.scrollLeft=left; }
+  }
+  window.addEventListener('click',function(e){
+    var t=e.target;
+    if(t && t.closest && t.closest('#mobileMenuBtn')) setTimeout(recenterNav,90);
+  },true);
+  document.addEventListener('DOMContentLoaded',function(){ syncHeaderHeight(); setTimeout(recenterNav,150); });
+  window.addEventListener('resize',syncHeaderHeight);
+  window.addEventListener('load',syncHeaderHeight);
+})();
+</script>
+<script id="salida-sonido">
+/* Sonido propio al salir hacia Documentación / Mi espacio / Ayuda */
+(function(){
+  var MAP = { 'documentacion.html':'documentacion', 'estado-db.html':'espacio', 'ayuda.html':'ayuda' };
+  document.addEventListener('click', function(e){
+    if(e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest('a[href]'); if(!a) return;
+    var href = a.getAttribute('href') || '';
+    for(var k in MAP){
+      if(href.indexOf(k) !== -1){
+        if(typeof playSound !== 'function') return;
+        e.preventDefault();
+        try{ playSound(MAP[k]); }catch(err){}
+        try{ if(typeof closeMobileMenu === 'function') closeMobileMenu(); }catch(err){}
+        setTimeout(function(){ window.location.href = a.href; }, 170);
+        return;
+      }
+    }
+  }, true);
+})();
+</script>
+</body>
+</html>
